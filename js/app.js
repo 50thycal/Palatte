@@ -8,7 +8,11 @@ import {
   getSnapshot,
   formatDate,
   getActiveProjectId,
-  setActiveProjectId
+  setActiveProjectId,
+  exportData,
+  importData,
+  getStats,
+  clearAllData
 } from './storage.js';
 
 const app = document.getElementById('app');
@@ -36,6 +40,9 @@ function render() {
       break;
     case 'snapshot':
       renderSnapshotView(viewParams.projectId, viewParams.snapshotId);
+      break;
+    case 'settings':
+      renderSettingsView();
       break;
     default:
       renderPalateView();
@@ -360,7 +367,7 @@ function renderProjectsView() {
       <header class="header">
         <button class="header-btn" id="back-palate">Palate</button>
         <span class="header-title">Projects</span>
-        <span style="width: 50px"></span>
+        <button class="header-btn" id="nav-settings">Settings</button>
       </header>
       <div class="list" id="projects-list">
         ${projects.length === 0 ? `
@@ -382,6 +389,10 @@ function renderProjectsView() {
 
   document.getElementById('back-palate').addEventListener('click', () => {
     navigate('palate');
+  });
+
+  document.getElementById('nav-settings').addEventListener('click', () => {
+    navigate('settings');
   });
 
   document.getElementById('projects-list').addEventListener('click', (e) => {
@@ -463,6 +474,95 @@ function renderSnapshotView(projectId, snapshotId) {
 
   document.getElementById('copy-snapshot').addEventListener('click', () => {
     copyToClipboard(snapshot.content);
+  });
+}
+
+// Settings View
+function renderSettingsView() {
+  const stats = getStats();
+
+  app.innerHTML = `
+    <div class="view">
+      <header class="header">
+        <button class="header-btn" id="back-projects">Back</button>
+        <span class="header-title">Settings</span>
+        <span style="width: 50px"></span>
+      </header>
+      <div class="settings-content">
+        <div class="settings-section">
+          <div class="settings-label">Data</div>
+          <div class="settings-stats">
+            ${stats.projectCount} project${stats.projectCount !== 1 ? 's' : ''},
+            ${stats.snapshotCount} snapshot${stats.snapshotCount !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label">Backup</div>
+          <button class="btn btn-secondary settings-btn" id="export-data">Export Data</button>
+          <p class="settings-hint">Download all your data as a JSON file</p>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label">Restore</div>
+          <input type="file" id="import-file" accept=".json" style="display: none">
+          <button class="btn btn-secondary settings-btn" id="import-data">Import Data</button>
+          <p class="settings-hint">Restore from a previous backup (replaces current data)</p>
+        </div>
+
+        <div class="settings-section settings-danger">
+          <div class="settings-label">Danger Zone</div>
+          <button class="btn btn-danger settings-btn" id="clear-data">Clear All Data</button>
+          <p class="settings-hint">Permanently delete all projects and snapshots</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('back-projects').addEventListener('click', () => {
+    navigate('projects');
+  });
+
+  document.getElementById('export-data').addEventListener('click', () => {
+    const data = exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `palate-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Data exported');
+  });
+
+  const fileInput = document.getElementById('import-file');
+  document.getElementById('import-data').addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = importData(event.target.result);
+      if (result.success) {
+        showToast('Data imported');
+        render();
+      } else {
+        showToast('Import failed: ' + result.error);
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('clear-data').addEventListener('click', () => {
+    if (confirm('Delete all data? This cannot be undone.')) {
+      clearAllData();
+      showToast('All data cleared');
+      navigate('palate');
+    }
   });
 }
 

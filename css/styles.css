@@ -351,3 +351,51 @@ body {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* Settings View */
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+}
+
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.settings-stats {
+  font-size: 16px;
+  color: var(--text);
+}
+
+.settings-btn {
+  width: 100%;
+  text-align: center;
+}
+
+.settings-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.settings-danger {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}

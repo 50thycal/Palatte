@@ -136,3 +136,40 @@ export function setActiveProjectId(projectId) {
   data.activeProjectId = projectId;
   saveData(data);
 }
+
+// Data management
+export function exportData() {
+  const data = loadData();
+  return JSON.stringify(data, null, 2);
+}
+
+export function importData(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+    // Basic validation
+    if (typeof data !== 'object') throw new Error('Invalid data');
+    if (!Array.isArray(data.projects)) throw new Error('Invalid projects');
+
+    // Ensure required fields
+    data.livePalate = data.livePalate || '';
+    data.activeProjectId = data.activeProjectId || null;
+
+    saveData(data);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+export function getStats() {
+  const data = loadData();
+  const totalSnapshots = data.projects.reduce((sum, p) => sum + p.snapshots.length, 0);
+  return {
+    projectCount: data.projects.length,
+    snapshotCount: totalSnapshots
+  };
+}
+
+export function clearAllData() {
+  localStorage.removeItem(STORAGE_KEY);
+}
