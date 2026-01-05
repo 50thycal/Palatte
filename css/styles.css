@@ -58,6 +58,39 @@ body {
   color: var(--accent);
   cursor: pointer;
   padding: 8px;
+  min-width: 60px;
+}
+
+/* Project Selector */
+.project-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  max-width: 180px;
+}
+
+.project-selector:active {
+  background: var(--border);
+}
+
+.project-selector-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-selector-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
   margin: -8px;
 }
 

@@ -7,7 +7,8 @@ function generateId() {
 function getDefaultData() {
   return {
     livePalate: '',
-    projects: []
+    projects: [],
+    activeProjectId: null
   };
 }
 
@@ -119,4 +120,19 @@ export function formatDate(isoString) {
     month: 'short',
     day: 'numeric'
   });
+}
+
+export function getActiveProjectId() {
+  const data = loadData();
+  // Validate that the project still exists
+  if (data.activeProjectId && data.projects.some(p => p.id === data.activeProjectId)) {
+    return data.activeProjectId;
+  }
+  return null;
+}
+
+export function setActiveProjectId(projectId) {
+  const data = loadData();
+  data.activeProjectId = projectId;
+  saveData(data);
 }

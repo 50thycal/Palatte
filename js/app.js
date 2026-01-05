@@ -6,7 +6,9 @@ import {
   createProject,
   archiveSnapshot,
   getSnapshot,
-  formatDate
+  formatDate,
+  getActiveProjectId,
+  setActiveProjectId
 } from './storage.js';
 
 const app = document.getElementById('app');
@@ -75,12 +77,18 @@ async function copyToClipboard(text) {
 // Palate View
 function renderPalateView() {
   const content = getLivePalate();
+  const activeProjectId = getActiveProjectId();
+  const activeProject = activeProjectId ? getProject(activeProjectId) : null;
 
   app.innerHTML = `
     <div class="palate-view">
       <header class="header">
-        <span class="header-title">Palate</span>
         <button class="header-btn" id="nav-projects">Projects</button>
+        <button class="project-selector" id="project-selector">
+          <span class="project-selector-label">${activeProject ? escapeHtml(activeProject.name) : 'No Project'}</span>
+          <span class="project-selector-arrow">▼</span>
+        </button>
+        <span style="width: 60px"></span>
       </header>
       <textarea
         class="palate-textarea"
@@ -99,6 +107,7 @@ function renderPalateView() {
   const copyBtn = document.getElementById('copy-all');
   const archiveBtn = document.getElementById('archive');
   const projectsBtn = document.getElementById('nav-projects');
+  const projectSelector = document.getElementById('project-selector');
 
   // Auto-save on input
   textarea.addEventListener('input', () => {
@@ -123,11 +132,26 @@ function renderPalateView() {
       showToast('Nothing to archive');
       return;
     }
-    showArchiveModal(text);
+
+    // If active project is set, archive directly
+    const activeId = getActiveProjectId();
+    if (activeId) {
+      archiveSnapshot(activeId, text, null);
+      saveLivePalate('');
+      showToast('Archived');
+      render();
+    } else {
+      // No active project, show the full modal
+      showArchiveModal(text);
+    }
   });
 
   projectsBtn.addEventListener('click', () => {
     navigate('projects');
+  });
+
+  projectSelector.addEventListener('click', () => {
+    showProjectPickerModal();
   });
 }
 
@@ -240,6 +264,90 @@ function showArchiveModal(content) {
     close();
     showToast('Archived');
     render();
+  });
+}
+
+// Project Picker Modal (for selecting active project)
+function showProjectPickerModal() {
+  const projects = getProjects();
+  const currentActiveId = getActiveProjectId();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Select Project</span>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="project-list">
+          <div class="project-option ${!currentActiveId ? 'selected' : ''}" data-id="">
+            No Project
+          </div>
+          <div class="project-option project-option-new" data-new="true">
+            + New Project
+          </div>
+          ${projects.map(p => `
+            <div class="project-option ${p.id === currentActiveId ? 'selected' : ''}" data-id="${p.id}">
+              ${escapeHtml(p.name)}
+            </div>
+          `).join('')}
+        </div>
+        <div id="new-project-input" style="display: none; margin-top: 12px;">
+          <input type="text" class="input" id="new-project-name" placeholder="Project name">
+          <button class="btn btn-primary" id="create-project" style="margin-top: 8px;">Create</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const closeBtn = overlay.querySelector('#modal-close');
+  const projectList = overlay.querySelector('#project-list');
+  const newProjectSection = overlay.querySelector('#new-project-input');
+  const newProjectInput = overlay.querySelector('#new-project-name');
+  const createProjectBtn = overlay.querySelector('#create-project');
+
+  const close = () => overlay.remove();
+
+  closeBtn.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  projectList.addEventListener('click', (e) => {
+    const option = e.target.closest('.project-option');
+    if (!option) return;
+
+    if (option.dataset.new) {
+      newProjectSection.style.display = 'block';
+      newProjectInput.focus();
+      return;
+    }
+
+    // Select project (or clear if empty id)
+    const projectId = option.dataset.id || null;
+    setActiveProjectId(projectId);
+    close();
+    render();
+  });
+
+  createProjectBtn.addEventListener('click', () => {
+    const name = newProjectInput.value.trim();
+    if (!name) return;
+    const project = createProject(name);
+    setActiveProjectId(project.id);
+    close();
+    render();
+  });
+
+  newProjectInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      createProjectBtn.click();
+    }
   });
 }
 
