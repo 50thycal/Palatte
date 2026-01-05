@@ -573,5 +573,114 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Project Switcher (iOS app-switcher style)
+function initProjectSwitcher() {
+  // Create edge zones for long-press detection
+  const leftZone = document.createElement('div');
+  leftZone.className = 'edge-zone edge-zone-left';
+  document.body.appendChild(leftZone);
+
+  const rightZone = document.createElement('div');
+  rightZone.className = 'edge-zone edge-zone-right';
+  document.body.appendChild(rightZone);
+
+  let longPressTimer = null;
+  const LONG_PRESS_DURATION = 400;
+
+  function startLongPress(e) {
+    e.preventDefault();
+    longPressTimer = setTimeout(() => {
+      showProjectSwitcher();
+    }, LONG_PRESS_DURATION);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  // Touch events for both zones
+  [leftZone, rightZone].forEach(zone => {
+    zone.addEventListener('touchstart', startLongPress, { passive: false });
+    zone.addEventListener('touchend', cancelLongPress);
+    zone.addEventListener('touchmove', cancelLongPress);
+    zone.addEventListener('touchcancel', cancelLongPress);
+  });
+}
+
+function showProjectSwitcher() {
+  const projects = getProjects();
+  const activeProjectId = getActiveProjectId();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'switcher-overlay';
+
+  if (projects.length === 0) {
+    overlay.innerHTML = `
+      <div class="switcher-empty">
+        No projects yet.<br>Archive something to create your first project.
+      </div>
+      <div class="switcher-hint">Tap anywhere to close</div>
+    `;
+  } else {
+    overlay.innerHTML = `
+      <div class="switcher-title">Switch Project</div>
+      <div class="switcher-carousel" id="switcher-carousel">
+        ${projects.map(p => {
+          const latestSnapshot = p.snapshots[0];
+          const preview = latestSnapshot
+            ? latestSnapshot.content.slice(0, 200)
+            : 'No snapshots yet';
+          return `
+            <div class="switcher-card ${p.id === activeProjectId ? 'active' : ''}" data-id="${p.id}">
+              <div class="switcher-card-header">
+                <div class="switcher-card-title">${escapeHtml(p.name)}</div>
+                <div class="switcher-card-meta">${p.snapshots.length} snapshot${p.snapshots.length !== 1 ? 's' : ''}</div>
+              </div>
+              <div class="switcher-card-preview">${escapeHtml(preview)}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="switcher-hint">Tap a project to switch</div>
+    `;
+  }
+
+  document.body.appendChild(overlay);
+
+  // Scroll to active project
+  const carousel = document.getElementById('switcher-carousel');
+  if (carousel) {
+    const activeCard = carousel.querySelector('.switcher-card.active');
+    if (activeCard) {
+      setTimeout(() => {
+        activeCard.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'center' });
+      }, 10);
+    }
+
+    // Handle card taps
+    carousel.addEventListener('click', (e) => {
+      const card = e.target.closest('.switcher-card');
+      if (card) {
+        const projectId = card.dataset.id;
+        setActiveProjectId(projectId);
+        overlay.remove();
+        render();
+        showToast('Switched to ' + getProject(projectId).name);
+      }
+    });
+  }
+
+  // Close on background tap
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.classList.contains('switcher-hint') || e.target.classList.contains('switcher-empty')) {
+      overlay.remove();
+    }
+  });
+}
+
 // Initialize
+initProjectSwitcher();
 render();
