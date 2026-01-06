@@ -107,7 +107,7 @@ body {
 .palate-textarea {
   flex: 1;
   width: 100%;
-  padding: 16px 28px;
+  padding: 20px 44px;
   font-family: inherit;
   font-size: 16px;
   line-height: 1.6;
@@ -512,7 +512,7 @@ body {
   position: fixed;
   top: 0;
   bottom: 0;
-  width: 24px;
+  width: 36px;
   z-index: 50;
 }
 
