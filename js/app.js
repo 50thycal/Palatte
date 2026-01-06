@@ -97,12 +97,14 @@ function renderPalateView() {
         </button>
         <span style="width: 60px"></span>
       </header>
-      <textarea
-        class="palate-textarea"
-        id="palate-input"
-        placeholder="Start typing..."
-        autofocus
-      >${escapeHtml(content)}</textarea>
+      <div class="palate-textarea-wrapper">
+        <textarea
+          class="palate-textarea"
+          id="palate-input"
+          placeholder="Start typing..."
+          autofocus
+        >${escapeHtml(content)}</textarea>
+      </div>
       <div class="palate-actions">
         <button class="btn btn-secondary" id="copy-all">Copy All</button>
         <button class="btn btn-primary" id="archive">Archive</button>
