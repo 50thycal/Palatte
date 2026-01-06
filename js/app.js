@@ -652,6 +652,15 @@ function showProjectSwitcher() {
 
   document.body.appendChild(overlay);
 
+  // Animated close function
+  function closeSwitcher(callback) {
+    overlay.classList.add('closing');
+    overlay.addEventListener('animationend', () => {
+      overlay.remove();
+      if (callback) callback();
+    }, { once: true });
+  }
+
   // Scroll to active project
   const carousel = document.getElementById('switcher-carousel');
   if (carousel) {
@@ -668,9 +677,10 @@ function showProjectSwitcher() {
       if (card) {
         const projectId = card.dataset.id;
         setActiveProjectId(projectId);
-        overlay.remove();
-        render();
-        showToast('Switched to ' + getProject(projectId).name);
+        closeSwitcher(() => {
+          render();
+          showToast('Switched to ' + getProject(projectId).name);
+        });
       }
     });
   }
@@ -678,7 +688,7 @@ function showProjectSwitcher() {
   // Close on background tap
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || e.target.classList.contains('switcher-hint') || e.target.classList.contains('switcher-empty')) {
-      overlay.remove();
+      closeSwitcher();
     }
   });
 }
