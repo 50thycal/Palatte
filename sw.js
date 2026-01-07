@@ -1,10 +1,14 @@
-const CACHE_NAME = 'palate-v1';
+const CACHE_NAME = 'palate-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/css/styles.css',
   '/js/app.js',
   '/js/storage.js',
+  '/js/db.js',
+  '/js/tokenizer.js',
+  '/js/predictor.js',
+  '/js/morph.js',
   '/icons/icon.svg',
   '/manifest.json'
 ];
