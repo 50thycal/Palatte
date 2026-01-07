@@ -113,6 +113,7 @@ body {
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--border);
   overflow: hidden;
+  min-height: 0; /* Allow shrinking */
 }
 
 .palate-textarea {
@@ -133,12 +134,43 @@ body {
   color: var(--text-muted);
 }
 
+/* Bottom section - morph bar + actions */
+.palate-bottom {
+  background: var(--bg);
+  transition: transform 0.15s ease-out;
+}
+
+.palate-bottom.keyboard-open {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* bottom is set dynamically by JS based on keyboard height */
+  padding: 8px 36px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  z-index: 100;
+  background: var(--bg);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
 .palate-actions {
   display: flex;
   gap: 12px;
   padding: 12px 0;
   padding-bottom: calc(12px + var(--safe-bottom));
   background: var(--bg);
+}
+
+/* Hide action buttons when keyboard is open to save space */
+.keyboard-open .palate-actions {
+  display: none;
+}
+
+/* Morph bar adjustments when keyboard is open */
+.keyboard-open .morph-bar {
+  margin-top: 0;
+  border-top: none;
+  padding: 4px 0;
+  min-height: 44px;
 }
 
 .btn {

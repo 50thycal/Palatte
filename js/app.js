@@ -112,18 +112,21 @@ function renderPalateView() {
           autofocus
         >${escapeHtml(content)}</textarea>
       </div>
-      <div class="morph-bar" id="morph-bar">
-        <span class="morph-bar-empty">Start typing to see suggestions...</span>
-      </div>
-      <div class="palate-actions">
-        <button class="btn btn-secondary" id="copy-all">Copy All</button>
-        <button class="btn btn-primary" id="archive">Archive</button>
+      <div class="palate-bottom" id="palate-bottom">
+        <div class="morph-bar" id="morph-bar">
+          <span class="morph-bar-empty">Start typing to see suggestions...</span>
+        </div>
+        <div class="palate-actions">
+          <button class="btn btn-secondary" id="copy-all">Copy All</button>
+          <button class="btn btn-primary" id="archive">Archive</button>
+        </div>
       </div>
     </div>
   `;
 
   const textarea = document.getElementById('palate-input');
   const morphBar = document.getElementById('morph-bar');
+  const palateBottom = document.getElementById('palate-bottom');
   const copyBtn = document.getElementById('copy-all');
   const archiveBtn = document.getElementById('archive');
   const projectsBtn = document.getElementById('nav-projects');
@@ -131,6 +134,9 @@ function renderPalateView() {
 
   // Initialize morph if needed
   initMorph();
+
+  // Setup keyboard detection for morph bar positioning
+  setupKeyboardDetection(palateBottom);
 
   // Auto-save on input and update predictions
   textarea.addEventListener('input', () => {
@@ -716,6 +722,64 @@ function insertWordAtCursor(textarea, word) {
 
   // Refocus textarea
   textarea.focus();
+}
+
+// Keyboard Detection for Morph Bar positioning
+function setupKeyboardDetection(palateBottom) {
+  if (!window.visualViewport) {
+    // Fallback for browsers without Visual Viewport API
+    console.log('[Keyboard] Visual Viewport API not available');
+    return;
+  }
+
+  const viewport = window.visualViewport;
+  let initialHeight = viewport.height;
+  let keyboardOpen = false;
+
+  function handleViewportChange() {
+    const currentHeight = viewport.height;
+    const heightDiff = initialHeight - currentHeight;
+
+    // Consider keyboard open if viewport shrinks by more than 150px
+    const isKeyboardOpen = heightDiff > 150;
+
+    if (isKeyboardOpen && !keyboardOpen) {
+      // Keyboard just opened
+      keyboardOpen = true;
+      palateBottom.classList.add('keyboard-open');
+
+      // Position at bottom of visible viewport
+      const bottomOffset = initialHeight - currentHeight;
+      palateBottom.style.bottom = `${bottomOffset}px`;
+    } else if (!isKeyboardOpen && keyboardOpen) {
+      // Keyboard just closed
+      keyboardOpen = false;
+      palateBottom.classList.remove('keyboard-open');
+      palateBottom.style.bottom = '';
+    } else if (isKeyboardOpen) {
+      // Keyboard is open, update position (for keyboard height changes)
+      const bottomOffset = initialHeight - currentHeight;
+      palateBottom.style.bottom = `${bottomOffset}px`;
+    }
+  }
+
+  // Update initial height on orientation changes
+  function handleResize() {
+    if (!keyboardOpen) {
+      initialHeight = viewport.height;
+    }
+  }
+
+  viewport.addEventListener('resize', handleViewportChange);
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+      initialHeight = viewport.height;
+      handleViewportChange();
+    }, 100);
+  });
+
+  // Also handle scroll events on the viewport (iOS quirk)
+  viewport.addEventListener('scroll', handleViewportChange);
 }
 
 // Project Switcher (iOS app-switcher style)
