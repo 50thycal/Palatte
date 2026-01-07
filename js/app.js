@@ -15,10 +15,17 @@ import {
   clearAllData
 } from './storage.js';
 
+import * as morph from './morph.js';
+
 const app = document.getElementById('app');
 
 let currentView = 'palate';
 let viewParams = {};
+
+// Morph prediction state
+let morphInitialized = false;
+let currentSuggestions = [];
+let morphUpdateTimer = null;
 
 // Simple router
 function navigate(view, params = {}) {
@@ -97,6 +104,9 @@ function renderPalateView() {
         </button>
         <span style="width: 60px"></span>
       </header>
+      <div class="morph-bar" id="morph-bar">
+        <span class="morph-bar-empty">Start typing to see suggestions...</span>
+      </div>
       <div class="palate-textarea-wrapper">
         <textarea
           class="palate-textarea"
@@ -113,15 +123,46 @@ function renderPalateView() {
   `;
 
   const textarea = document.getElementById('palate-input');
+  const morphBar = document.getElementById('morph-bar');
   const copyBtn = document.getElementById('copy-all');
   const archiveBtn = document.getElementById('archive');
   const projectsBtn = document.getElementById('nav-projects');
   const projectSelector = document.getElementById('project-selector');
 
-  // Auto-save on input
+  // Initialize morph if needed
+  initMorph();
+
+  // Auto-save on input and update predictions
   textarea.addEventListener('input', () => {
     saveLivePalate(textarea.value);
+    scheduleMorphUpdate(textarea);
   });
+
+  // Also update on key events that might change cursor position
+  textarea.addEventListener('keyup', (e) => {
+    // Update on space, punctuation, or arrow keys
+    if (e.key === ' ' || e.key === 'Enter' ||
+        e.key === '.' || e.key === ',' || e.key === '!' || e.key === '?' ||
+        e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+        e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      scheduleMorphUpdate(textarea);
+    }
+  });
+
+  // Handle morph bubble taps
+  morphBar.addEventListener('click', (e) => {
+    const bubble = e.target.closest('.morph-bubble');
+    if (bubble) {
+      const word = bubble.dataset.word;
+      insertWordAtCursor(textarea, word);
+      scheduleMorphUpdate(textarea);
+    }
+  });
+
+  // Initial prediction update
+  if (content) {
+    scheduleMorphUpdate(textarea);
+  }
 
   // Focus textarea
   setTimeout(() => textarea.focus(), 50);
@@ -135,7 +176,7 @@ function renderPalateView() {
     copyToClipboard(text);
   });
 
-  archiveBtn.addEventListener('click', () => {
+  archiveBtn.addEventListener('click', async () => {
     const text = textarea.value;
     if (!text.trim()) {
       showToast('Nothing to archive');
@@ -145,7 +186,7 @@ function renderPalateView() {
     // If active project is set, archive directly
     const activeId = getActiveProjectId();
     if (activeId) {
-      archiveSnapshot(activeId, text, null);
+      await morph.archiveSnapshot(activeId, text, null);
       saveLivePalate('');
       showToast('Archived');
       render();
@@ -252,7 +293,7 @@ function showArchiveModal(content) {
     }
   }
 
-  confirmBtn.addEventListener('click', () => {
+  confirmBtn.addEventListener('click', async () => {
     let targetProjectId = selectedProjectId;
 
     if (isNewProject) {
@@ -265,7 +306,7 @@ function showArchiveModal(content) {
     if (!targetProjectId) return;
 
     const title = titleInput.value.trim();
-    archiveSnapshot(targetProjectId, content, title);
+    await morph.archiveSnapshot(targetProjectId, content, title);
 
     // Clear palate after archiving
     saveLivePalate('');
@@ -573,6 +614,108 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Morph Bar Functions
+async function initMorph() {
+  if (morphInitialized) return;
+  try {
+    await morph.initialize();
+    morphInitialized = true;
+    console.log('[Morph] Ready');
+  } catch (err) {
+    console.error('[Morph] Init failed:', err);
+  }
+}
+
+function scheduleMorphUpdate(textarea) {
+  // Debounce updates to avoid excessive calls
+  if (morphUpdateTimer) {
+    clearTimeout(morphUpdateTimer);
+  }
+  morphUpdateTimer = setTimeout(() => {
+    updateMorphSuggestions(textarea);
+  }, 50); // 50ms debounce
+}
+
+async function updateMorphSuggestions(textarea) {
+  if (!morphInitialized) return;
+
+  const morphBar = document.getElementById('morph-bar');
+  if (!morphBar) return;
+
+  const text = textarea.value;
+  const cursorPos = textarea.selectionStart;
+
+  try {
+    const suggestions = await morph.getNextWordSuggestions(text, cursorPos, 6);
+    currentSuggestions = suggestions;
+    renderMorphBar(morphBar, suggestions);
+  } catch (err) {
+    console.error('[Morph] Prediction error:', err);
+  }
+}
+
+function renderMorphBar(morphBar, suggestions) {
+  if (!suggestions || suggestions.length === 0) {
+    morphBar.innerHTML = '<span class="morph-bar-empty">Keep typing to see suggestions...</span>';
+    return;
+  }
+
+  // Determine size class based on relative score
+  // Top 1-2 get large, middle get medium, rest get small
+  const bubbles = suggestions.map((s, i) => {
+    let sizeClass = 'morph-bubble-sm';
+    if (i === 0 && s.score > 0.25) {
+      sizeClass = 'morph-bubble-lg';
+    } else if (i <= 1 && s.score > 0.15) {
+      sizeClass = 'morph-bubble-md';
+    } else if (s.score > 0.1) {
+      sizeClass = 'morph-bubble-md';
+    }
+
+    return `<button class="morph-bubble ${sizeClass}" data-word="${escapeHtml(s.word)}">${escapeHtml(s.word)}</button>`;
+  });
+
+  morphBar.innerHTML = bubbles.join('');
+}
+
+function insertWordAtCursor(textarea, word) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+
+  // Check if we need to handle partial word replacement
+  // Find the start of the current word (if any)
+  let wordStart = start;
+  while (wordStart > 0 && !/\s/.test(text[wordStart - 1])) {
+    wordStart--;
+  }
+
+  // Check if cursor is at end of text or after whitespace
+  const beforeCursor = text.slice(0, start);
+  const isAfterSpace = beforeCursor.length === 0 ||
+                       /\s$/.test(beforeCursor);
+
+  let newText;
+  let newCursorPos;
+
+  if (isAfterSpace) {
+    // Insert word with trailing space
+    newText = text.slice(0, start) + word + ' ' + text.slice(end);
+    newCursorPos = start + word.length + 1;
+  } else {
+    // Replace partial word
+    newText = text.slice(0, wordStart) + word + ' ' + text.slice(end);
+    newCursorPos = wordStart + word.length + 1;
+  }
+
+  textarea.value = newText;
+  textarea.setSelectionRange(newCursorPos, newCursorPos);
+  saveLivePalate(newText);
+
+  // Refocus textarea
+  textarea.focus();
 }
 
 // Project Switcher (iOS app-switcher style)

@@ -166,6 +166,93 @@ body {
   color: var(--text);
 }
 
+/* Morph Bar - Next Word Predictions */
+.morph-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  min-height: 52px;
+}
+
+.morph-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.morph-bar-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  padding: 0 4px;
+}
+
+.morph-bubble {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.1s ease-out, background 0.1s ease-out, box-shadow 0.1s ease-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.morph-bubble:active {
+  transform: scale(0.95);
+  background: var(--border);
+}
+
+/* Size variants based on confidence */
+.morph-bubble-lg {
+  padding: 10px 18px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.morph-bubble-md {
+  padding: 8px 14px;
+  font-size: 15px;
+}
+
+.morph-bubble-sm {
+  padding: 6px 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Animation for new suggestions */
+.morph-bubble {
+  animation: morph-bubble-in 0.15s ease-out;
+}
+
+@keyframes morph-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Stagger animation delays */
+.morph-bubble:nth-child(1) { animation-delay: 0ms; }
+.morph-bubble:nth-child(2) { animation-delay: 20ms; }
+.morph-bubble:nth-child(3) { animation-delay: 40ms; }
+.morph-bubble:nth-child(4) { animation-delay: 60ms; }
+.morph-bubble:nth-child(5) { animation-delay: 80ms; }
+.morph-bubble:nth-child(6) { animation-delay: 100ms; }
+
 /* Projects View */
 .view {
   display: flex;
