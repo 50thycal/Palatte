@@ -104,9 +104,6 @@ function renderPalateView() {
         </button>
         <span style="width: 60px"></span>
       </header>
-      <div class="morph-bar" id="morph-bar">
-        <span class="morph-bar-empty">Start typing to see suggestions...</span>
-      </div>
       <div class="palate-textarea-wrapper">
         <textarea
           class="palate-textarea"
@@ -114,6 +111,9 @@ function renderPalateView() {
           placeholder="Start typing..."
           autofocus
         >${escapeHtml(content)}</textarea>
+      </div>
+      <div class="morph-bar" id="morph-bar">
+        <span class="morph-bar-empty">Start typing to see suggestions...</span>
       </div>
       <div class="palate-actions">
         <button class="btn btn-secondary" id="copy-all">Copy All</button>
