@@ -12,12 +12,21 @@ import {
   exportData,
   importData,
   getStats,
-  clearAllData
+  clearAllData,
+  getTheme,
+  toggleTheme,
+  applyTheme,
+  getPersonalCorpus,
+  savePersonalCorpus,
+  getCorpusStats
 } from './storage.js';
 
 import * as morph from './morph.js';
 
 const app = document.getElementById('app');
+
+// Apply saved theme on load
+applyTheme(getTheme());
 
 let currentView = 'palate';
 let viewParams = {};
@@ -94,6 +103,9 @@ function renderPalateView() {
   const activeProjectId = getActiveProjectId();
   const activeProject = activeProjectId ? getProject(activeProjectId) : null;
 
+  const currentTheme = getTheme();
+  const themeIcon = currentTheme === 'dark' ? '☀️' : '🌙';
+
   app.innerHTML = `
     <div class="palate-view">
       <header class="header">
@@ -102,7 +114,7 @@ function renderPalateView() {
           <span class="project-selector-label">${activeProject ? escapeHtml(activeProject.name) : 'No Project'}</span>
           <span class="project-selector-arrow">▼</span>
         </button>
-        <span style="width: 60px"></span>
+        <button class="theme-toggle" id="theme-toggle" title="Toggle theme">${themeIcon}</button>
       </header>
       <div class="palate-textarea-wrapper">
         <textarea
@@ -131,6 +143,13 @@ function renderPalateView() {
   const archiveBtn = document.getElementById('archive');
   const projectsBtn = document.getElementById('nav-projects');
   const projectSelector = document.getElementById('project-selector');
+  const themeToggle = document.getElementById('theme-toggle');
+
+  // Theme toggle
+  themeToggle.addEventListener('click', () => {
+    const newTheme = toggleTheme();
+    themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+  });
 
   // Initialize morph if needed
   initMorph();
@@ -529,6 +548,8 @@ function renderSnapshotView(projectId, snapshotId) {
 // Settings View
 function renderSettingsView() {
   const stats = getStats();
+  const corpusStats = getCorpusStats();
+  const personalCorpus = getPersonalCorpus();
 
   app.innerHTML = `
     <div class="view">
@@ -543,6 +564,28 @@ function renderSettingsView() {
           <div class="settings-stats">
             ${stats.projectCount} project${stats.projectCount !== 1 ? 's' : ''},
             ${stats.snapshotCount} snapshot${stats.snapshotCount !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label">Writing Style</div>
+          <p class="settings-hint" style="margin-bottom: 12px">
+            Add text samples of your writing to improve predictions. Paste emails, messages, notes - anything that reflects how you write.
+          </p>
+          <textarea
+            class="corpus-textarea"
+            id="corpus-input"
+            placeholder="Paste your writing samples here...
+
+Example: emails you've sent, messages, notes, blog posts, etc. The more text you add, the better the predictions will match your writing style."
+          >${escapeHtml(personalCorpus)}</textarea>
+          <div class="corpus-stats">
+            <span>${corpusStats.words.toLocaleString()} words</span>
+            <span>${corpusStats.characters.toLocaleString()} characters</span>
+          </div>
+          <div class="corpus-actions">
+            <button class="btn btn-secondary" id="save-corpus">Save</button>
+            <button class="btn btn-primary" id="train-corpus">Train Model</button>
           </div>
         </div>
 
@@ -570,6 +613,35 @@ function renderSettingsView() {
 
   document.getElementById('back-projects').addEventListener('click', () => {
     navigate('projects');
+  });
+
+  // Personal corpus handlers
+  const corpusInput = document.getElementById('corpus-input');
+
+  document.getElementById('save-corpus').addEventListener('click', () => {
+    savePersonalCorpus(corpusInput.value);
+    showToast('Writing samples saved');
+    render(); // Refresh to update stats
+  });
+
+  document.getElementById('train-corpus').addEventListener('click', async () => {
+    const text = corpusInput.value.trim();
+    if (!text) {
+      showToast('Add some text first');
+      return;
+    }
+
+    savePersonalCorpus(text);
+    showToast('Training model...');
+
+    try {
+      await morph.trainModelFromCorpus(text);
+      showToast('Model trained!');
+      render();
+    } catch (err) {
+      console.error('[Morph] Training error:', err);
+      showToast('Training failed');
+    }
   });
 
   document.getElementById('export-data').addEventListener('click', () => {

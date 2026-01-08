@@ -173,3 +173,47 @@ export function getStats() {
 export function clearAllData() {
   localStorage.removeItem(STORAGE_KEY);
 }
+
+// Theme management
+const THEME_KEY = 'palate_theme';
+
+export function getTheme() {
+  return localStorage.getItem(THEME_KEY) || 'light';
+}
+
+export function setTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+}
+
+export function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+export function toggleTheme() {
+  const current = getTheme();
+  const next = current === 'light' ? 'dark' : 'light';
+  setTheme(next);
+  return next;
+}
+
+// Personal corpus for Morph predictions
+const CORPUS_KEY = 'palate_corpus';
+
+export function getPersonalCorpus() {
+  return localStorage.getItem(CORPUS_KEY) || '';
+}
+
+export function savePersonalCorpus(text) {
+  localStorage.setItem(CORPUS_KEY, text);
+}
+
+export function getCorpusStats() {
+  const corpus = getPersonalCorpus();
+  if (!corpus.trim()) {
+    return { words: 0, characters: 0 };
+  }
+  const words = corpus.trim().split(/\s+/).length;
+  const characters = corpus.length;
+  return { words, characters };
+}

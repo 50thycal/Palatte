@@ -11,7 +11,7 @@ import {
   endsWithWordBoundary,
   extractNgrams
 } from './tokenizer.js';
-import { getProjects, getProject, loadData } from './storage.js';
+import { getProjects, getProject, loadData, getPersonalCorpus } from './storage.js';
 
 // Configuration
 const DEFAULT_SUGGESTIONS = 6;
@@ -20,8 +20,9 @@ const RECENCY_DECAY = 0.9; // Weight decay for older snapshots
 /**
  * Train model from all existing corpus data
  * Processes all archived snapshots with recency weighting
+ * @param {string} personalCorpus - Optional personal writing samples to include
  */
-export async function trainModelFromCorpus() {
+export async function trainModelFromCorpus(personalCorpus = null) {
   // Clear existing model
   await predictor.clearModel();
 
@@ -61,8 +62,15 @@ export async function trainModelFromCorpus() {
     await predictor.train(data.livePalate, 1.0);
   }
 
+  // Train on personal corpus if provided (high weight - this is the user's voice)
+  if (personalCorpus && personalCorpus.trim()) {
+    await predictor.train(personalCorpus, 1.2); // Slightly higher weight for personal style
+    console.log('[Morph] Trained on personal corpus');
+  }
+
   return {
     snapshotsProcessed: totalSnapshots,
+    hasPersonalCorpus: !!(personalCorpus && personalCorpus.trim()),
     stats: await predictor.getModelStats()
   };
 }
@@ -260,7 +268,8 @@ export async function initialize() {
 
       if (unprocessed.length > 0 || allSnapshotIds.length > 0) {
         console.log('[Morph] Training model from corpus...');
-        await trainModelFromCorpus();
+        const personalCorpus = getPersonalCorpus();
+        await trainModelFromCorpus(personalCorpus);
       }
     } else {
       // Model exists, preload into memory
