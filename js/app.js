@@ -736,6 +736,16 @@ function setupKeyboardDetection(palateBottom) {
   let initialHeight = viewport.height;
   let keyboardOpen = false;
 
+  function updatePosition() {
+    // Calculate where the bottom of the visual viewport is relative to the layout viewport
+    // This accounts for both keyboard height AND scroll position
+    const visualBottom = viewport.offsetTop + viewport.height;
+    const layoutHeight = window.innerHeight;
+    const bottomOffset = layoutHeight - visualBottom;
+
+    palateBottom.style.bottom = `${Math.max(0, bottomOffset)}px`;
+  }
+
   function handleViewportChange() {
     const currentHeight = viewport.height;
     const heightDiff = initialHeight - currentHeight;
@@ -747,39 +757,27 @@ function setupKeyboardDetection(palateBottom) {
       // Keyboard just opened
       keyboardOpen = true;
       palateBottom.classList.add('keyboard-open');
-
-      // Position at bottom of visible viewport
-      const bottomOffset = initialHeight - currentHeight;
-      palateBottom.style.bottom = `${bottomOffset}px`;
+      updatePosition();
     } else if (!isKeyboardOpen && keyboardOpen) {
       // Keyboard just closed
       keyboardOpen = false;
       palateBottom.classList.remove('keyboard-open');
       palateBottom.style.bottom = '';
     } else if (isKeyboardOpen) {
-      // Keyboard is open, update position (for keyboard height changes)
-      const bottomOffset = initialHeight - currentHeight;
-      palateBottom.style.bottom = `${bottomOffset}px`;
-    }
-  }
-
-  // Update initial height on orientation changes
-  function handleResize() {
-    if (!keyboardOpen) {
-      initialHeight = viewport.height;
+      // Keyboard is open, update position (tracks scroll and keyboard changes)
+      updatePosition();
     }
   }
 
   viewport.addEventListener('resize', handleViewportChange);
+  viewport.addEventListener('scroll', handleViewportChange);
+
   window.addEventListener('orientationchange', () => {
     setTimeout(() => {
       initialHeight = viewport.height;
       handleViewportChange();
     }, 100);
   });
-
-  // Also handle scroll events on the viewport (iOS quirk)
-  viewport.addEventListener('scroll', handleViewportChange);
 }
 
 // Project Switcher (iOS app-switcher style)
