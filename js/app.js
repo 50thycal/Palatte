@@ -809,13 +809,13 @@ function setupKeyboardDetection(palateBottom) {
   let keyboardOpen = false;
 
   function updatePosition() {
-    // Calculate where the bottom of the visual viewport is relative to the layout viewport
-    // This accounts for both keyboard height AND scroll position
-    const visualBottom = viewport.offsetTop + viewport.height;
-    const layoutHeight = window.innerHeight;
-    const bottomOffset = layoutHeight - visualBottom;
+    // Position element at the bottom of the visual viewport using top positioning
+    // This is more reliable than bottom positioning on iOS Safari
+    const elementHeight = palateBottom.offsetHeight;
+    const targetTop = viewport.offsetTop + viewport.height - elementHeight;
 
-    palateBottom.style.bottom = `${Math.max(0, bottomOffset)}px`;
+    palateBottom.style.top = `${targetTop}px`;
+    palateBottom.style.bottom = 'auto';
   }
 
   function handleViewportChange() {
@@ -834,6 +834,7 @@ function setupKeyboardDetection(palateBottom) {
       // Keyboard just closed
       keyboardOpen = false;
       palateBottom.classList.remove('keyboard-open');
+      palateBottom.style.top = '';
       palateBottom.style.bottom = '';
     } else if (isKeyboardOpen) {
       // Keyboard is open, update position (tracks scroll and keyboard changes)

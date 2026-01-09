@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palate-v5';
+const CACHE_NAME = 'palate-v6';
 const ASSETS = [
   '/',
   '/index.html',
