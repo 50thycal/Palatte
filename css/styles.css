@@ -152,18 +152,6 @@ body {
 /* Bottom section - morph bar + actions */
 .palate-bottom {
   background: var(--bg);
-  transition: transform 0.15s ease-out;
-}
-
-.palate-bottom.keyboard-open {
-  position: fixed;
-  left: 0;
-  right: 0;
-  /* top is set dynamically by JS to track visual viewport */
-  padding: 8px 36px;
-  z-index: 100;
-  background: var(--bg);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .palate-actions {
@@ -174,17 +162,24 @@ body {
   background: var(--bg);
 }
 
-/* Hide action buttons when keyboard is open to save space */
-.keyboard-open .palate-actions {
+/* Morph Bar - Hidden by default, only shows when keyboard is open */
+.morph-bar {
   display: none;
 }
 
-/* Morph bar adjustments when keyboard is open */
-.keyboard-open .morph-bar {
-  margin-top: 0;
-  border-top: none;
-  padding: 4px 0;
-  min-height: 44px;
+/* When keyboard is open, show morph bar in normal flow at bottom of palate view */
+.morph-bar.keyboard-active {
+  display: flex;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+  min-height: 52px;
+}
+
+/* Hide action buttons when keyboard is open */
+body.keyboard-open .palate-actions {
+  display: none;
 }
 
 .btn {
@@ -213,18 +208,14 @@ body {
 }
 
 /* Morph Bar - Next Word Predictions */
-.morph-bar {
-  display: flex;
+/* Base styles applied when morph bar is visible (keyboard open) */
+.morph-bar.keyboard-active {
   align-items: center;
   gap: 8px;
-  padding: 8px 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  min-height: 48px;
-  border-top: 1px solid var(--border);
-  margin-top: 8px;
 }
 
 .morph-bar::-webkit-scrollbar {

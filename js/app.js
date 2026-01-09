@@ -796,7 +796,7 @@ function insertWordAtCursor(textarea, word) {
   textarea.focus();
 }
 
-// Keyboard Detection for Morph Bar positioning
+// Keyboard Detection for Morph Bar positioning and textarea resizing
 function setupKeyboardDetection(palateBottom) {
   if (!window.visualViewport) {
     // Fallback for browsers without Visual Viewport API
@@ -805,17 +805,34 @@ function setupKeyboardDetection(palateBottom) {
   }
 
   const viewport = window.visualViewport;
+  const morphBar = document.getElementById('morph-bar');
+  const palateView = document.querySelector('.palate-view');
   let initialHeight = viewport.height;
   let keyboardOpen = false;
 
-  function updatePosition() {
-    // Position element at the bottom of the visual viewport using top positioning
-    // This is more reliable than bottom positioning on iOS Safari
-    const elementHeight = palateBottom.offsetHeight;
-    const targetTop = viewport.offsetTop + viewport.height - elementHeight;
+  function updateLayout() {
+    // Set the palate view height to match the visual viewport
+    // This makes everything fit in the visible area above the keyboard
+    const viewportHeight = viewport.height;
 
-    palateBottom.style.top = `${targetTop}px`;
-    palateBottom.style.bottom = 'auto';
+    if (palateView) {
+      // Adjust for any viewport offset (scroll)
+      palateView.style.height = `${viewportHeight}px`;
+      palateView.style.position = 'fixed';
+      palateView.style.top = `${viewport.offsetTop}px`;
+      palateView.style.left = '0';
+      palateView.style.right = '0';
+    }
+  }
+
+  function resetLayout() {
+    if (palateView) {
+      palateView.style.height = '';
+      palateView.style.position = '';
+      palateView.style.top = '';
+      palateView.style.left = '';
+      palateView.style.right = '';
+    }
   }
 
   function handleViewportChange() {
@@ -828,17 +845,18 @@ function setupKeyboardDetection(palateBottom) {
     if (isKeyboardOpen && !keyboardOpen) {
       // Keyboard just opened
       keyboardOpen = true;
-      palateBottom.classList.add('keyboard-open');
-      updatePosition();
+      morphBar.classList.add('keyboard-active');
+      document.body.classList.add('keyboard-open');
+      updateLayout();
     } else if (!isKeyboardOpen && keyboardOpen) {
       // Keyboard just closed
       keyboardOpen = false;
-      palateBottom.classList.remove('keyboard-open');
-      palateBottom.style.top = '';
-      palateBottom.style.bottom = '';
+      morphBar.classList.remove('keyboard-active');
+      document.body.classList.remove('keyboard-open');
+      resetLayout();
     } else if (isKeyboardOpen) {
-      // Keyboard is open, update position (tracks scroll and keyboard changes)
-      updatePosition();
+      // Keyboard is still open, update layout for any changes
+      updateLayout();
     }
   }
 
