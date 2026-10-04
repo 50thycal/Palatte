@@ -148,23 +148,46 @@ const exportsOk = await page.evaluate(async () => {
 });
 assert.ok(exportsOk, 'web-llm exports');
 
-// 6. Crash guard: an unfinished model run (app killed) disables the model on restart
-await page.evaluate(async () => {
-  const st = await import('/js/store.js');
-  await st.setKV('llmReady', true);
-  await st.setKV('llmInFlight', Date.now());
-});
-await page.reload();
-await page.waitForTimeout(1200);
-const after = await page.evaluate(async () => {
-  const st = await import('/js/store.js');
-  const o = await import('/js/organize/organizer.js');
-  return { ready: st.getKV('llmReady'), inFlight: st.getKV('llmInFlight'), status: o.getStatus() };
-});
-assert.equal(after.ready, false);
+// 6. Crash guard: what the app was doing when iOS killed it decides the advice
+async function crashWith(marker, model = 'standard') {
+  await page.evaluate(async ({ marker, model }) => {
+    const st = await import('/js/store.js');
+    await st.setKV('organizerModel', model);
+    await st.setKV('llmReady', true);
+    await st.setKV('llmInFlight', marker);
+  }, { marker, model });
+  await page.reload();
+  await page.waitForTimeout(1200);
+  return page.evaluate(async () => {
+    const st = await import('/js/store.js');
+    const o = await import('/js/organize/organizer.js');
+    return { ready: st.getKV('llmReady'), inFlight: st.getKV('llmInFlight'), model: st.getKV('organizerModel'), status: o.getStatus() };
+  });
+}
+
+// Interrupted download (app closed/backgrounded): resume, same model
+let after = await crashWith({ at: 1, phase: 'download', model: 'standard', progress: 40 });
 assert.equal(after.inFlight, null);
-assert.equal(after.status.state, 'error');
-assert.match(after.status.text, /Lite model/);
+assert.equal(after.model, 'standard');
+assert.match(after.status.text, /download stopped at 40%/);
+
+// Killed while loading onto the GPU: step down to the next smaller model
+after = await crashWith({ at: 1, phase: 'load', model: 'standard', progress: 100 });
+assert.equal(after.ready, false);
+assert.equal(after.model, 'lite');
+assert.match(after.status.text, /Switched to Lite 1\.5B/);
+
+after = await crashWith({ at: 1, phase: 'generate', model: 'lite', progress: 100 }, 'lite');
+assert.equal(after.model, 'tiny');
+
+after = await crashWith({ at: 1, phase: 'load', model: 'tiny', progress: 100 }, 'tiny');
+assert.equal(after.model, 'tiny');
+assert.match(after.status.text, /can't run the model/);
+
+// Markers written by the previous version (a bare timestamp) still recover
+after = await crashWith(Date.now(), 'standard');
+assert.equal(after.model, 'lite');
+await page.evaluate(async () => (await import('/js/store.js')).setKV('organizerModel', 'lite'));
 if (process.env.SHOTS) {
   await page.evaluate(() => document.activeElement?.blur());
   await page.waitForTimeout(300);

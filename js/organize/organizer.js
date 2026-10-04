@@ -71,11 +71,13 @@ export async function downloadModel(onProgress) {
   const key = modelKey();
   setStatus({ state: 'loading', text: 'Downloading model…', progress: 0 });
   try {
-    await guarded(() => llm.load(key, (p) => {
+    await guarded('download', () => llm.load(key, (p) => {
+      markProgress(p);
       setStatus({ state: 'loading', progress: p.progress, text: p.text });
       onProgress?.(p);
     }));
     await store.setKV('llmReady', true);
+    await store.setKV('llmLastIssue', null);
     setStatus({ state: 'idle', progress: null, text: 'Model ready' });
     scheduleUnload();
     process();
@@ -92,31 +94,78 @@ export async function deleteModel() {
 }
 
 /**
- * Crash guard. If iOS kills the app while the model is loading or running
- * (usually out of memory) the page simply reloads, and resuming the queue
- * would crash it again. A marker written before model work and cleared after
- * tells us on the next start that the last attempt never finished.
+ * Crash guard. If iOS kills the app while the model is downloading, loading
+ * or running, the page just reloads. A marker records which stage was in
+ * progress; it's cleared when the work finishes. Finding it at startup tells
+ * us how the last attempt died:
+ *   download        -> interrupted (app closed / backgrounded): resume
+ *   load / generate -> the model needs more GPU memory than iOS allows this
+ *                      web app: step down to the next smaller model
  */
-async function guarded(fn) {
-  await store.setKV('llmInFlight', Date.now());
+let marker = null;
+
+async function guarded(phase, fn) {
+  marker = { at: Date.now(), phase, model: modelKey(), progress: 0 };
+  await store.setKV('llmInFlight', marker);
   try {
     return await fn();
   } finally {
+    marker = null;
     await store.setKV('llmInFlight', null);
   }
 }
 
+// Called from progress callbacks; writes only when the stage changes or
+// download progress moves another 10%, to keep IndexedDB writes cheap
+function markProgress(p) {
+  if (!marker) return;
+  const phase = llm.phaseOf(p.text) || marker.phase;
+  const progress = Math.round((p.progress || 0) * 100);
+  if (phase !== marker.phase || progress - marker.progress >= 10) {
+    marker = { ...marker, phase, progress };
+    store.setKV('llmInFlight', marker);
+  }
+}
+
+function markPhase(phase) {
+  if (!marker || marker.phase === phase) return;
+  marker = { ...marker, phase };
+  store.setKV('llmInFlight', marker);
+}
+
+export function lastIssue() {
+  return store.getKV('llmLastIssue', null);
+}
+
 async function recoverFromCrash() {
-  if (!store.getKV('llmInFlight')) return;
+  let m = store.getKV('llmInFlight');
+  if (!m) return;
+  if (typeof m === 'number') m = { at: m, phase: 'load', model: modelKey(), progress: 0 };
   await store.setKV('llmInFlight', null);
-  await store.setKV('llmReady', false);
-  const lite = modelKey() === 'lite';
-  setStatus({
-    state: 'error',
-    text: lite
-      ? 'The model stopped the app last time (out of memory). It is off; basic tidy-up is used instead.'
-      : 'The model stopped the app last time (out of memory). Switch to the Lite model and download it again.'
-  });
+
+  const model = llm.MODELS[m.model] || llm.MODELS[modelKey()];
+  let text;
+  if (m.phase === 'download') {
+    text = `The download stopped at ${m.progress}%: Palate was closed or went to the background. ` +
+      'Tap Download to resume. The finished part is kept.';
+  } else {
+    await store.setKV('llmReady', false);
+    const order = llm.MODEL_ORDER;
+    const smaller = order[order.indexOf(model.key) + 1];
+    const what = m.phase === 'generate' ? 'running' : 'loading';
+    if (smaller) {
+      await store.setKV('organizerModel', smaller);
+      const next = llm.MODELS[smaller];
+      text = `iOS closed Palate while ${what} ${model.label}. It needs about ${(model.memoryMB / 1024).toFixed(1)} GB ` +
+        `of GPU memory, more than iOS lets a web app use. Switched to ${next.short} (about ${(next.memoryMB / 1024).toFixed(1)} GB). Tap Download to try it.`;
+    } else {
+      text = `iOS closed Palate even with ${model.label}, so this phone can't run the model inside Safari. ` +
+        'Basic tidy-up is used instead.';
+    }
+  }
+  const issue = { at: Date.now(), phase: m.phase, model: model.key, progress: m.progress, text };
+  await store.setKV('llmLastIssue', issue);
+  setStatus({ state: 'error', text });
 }
 
 function friendlyError(err) {
@@ -294,12 +343,16 @@ async function organize(job) {
     if (engineOverride) {
       result = parseResult(await engineOverride(prompt));
     } else {
-      result = await guarded(async () => {
+      result = await guarded('load', async () => {
         if (!llm.isLoaded(modelKey())) {
           setStatus({ state: 'loading', text: 'Waking up the model…' });
-          await llm.load(modelKey(), (p) => setStatus({ state: 'loading', progress: p.progress, text: p.text }));
+          await llm.load(modelKey(), (p) => {
+            markProgress(p);
+            setStatus({ state: 'loading', progress: p.progress, text: p.text });
+          });
           setStatus({ state: 'working', progress: null, text: 'Organizing…' });
         }
+        markPhase('generate');
         return parseResult(await llm.generateJSON(prompt));
       });
     }
