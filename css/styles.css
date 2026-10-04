@@ -938,7 +938,7 @@ html.pk-open .toast { bottom: calc(var(--kb-h) + 16px); }
   width: 100%;
   min-height: 160px;
   padding: 12px 14px;
-  font-size: 15px;
+  font-size: 16px; /* iOS zooms into fields under 16px */
   line-height: 1.5;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1270,3 +1270,39 @@ html.pk-open .toast { bottom: calc(var(--kb-h) + 16px); }
 }
 
 .hidden { display: none !important; }
+
+/* Double-tap zoom shifts the viewport under the keyboard: disable it */
+html { touch-action: manipulation; }
+
+/* Touch diagnostics (Settings → Keyboard → Touch debug overlay) */
+.pk-debug {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+.pk-debug-raw,
+.pk-debug-fixed {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #ff3b30;
+}
+
+.pk-debug-fixed { border-color: #34c759; background: rgba(52, 199, 89, 0.35); }
+
+.pk-debug-info {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(8px + var(--safe-top));
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font: 12px/1.4 ui-monospace, Menlo, monospace;
+}

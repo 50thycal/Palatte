@@ -100,6 +100,24 @@ await page.locator('.pk-pred').nth(i).tap();
 await tap('.');
 assert.equal(await value(), "Teh quick. I don't know see you tomorrow. ", 'prediction + smart punctuation');
 
+// iOS quirk: after focusing a field iOS may scroll the page, so touches on a
+// fixed keyboard report coordinates shifted from what's drawn. The browser's
+// own target is still the key under the finger; that must win.
+await page.$eval('#palate-input', (el) => { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); });
+for (const [i, ch] of [...'zxcvbnm'].entries()) {
+  await page.evaluate(({ ch, id }) => {
+    const keyEl = [...document.querySelectorAll('.pk-key')]
+      .find((k) => k.querySelector('.pk-key-label').textContent.trim().toLowerCase() === ch);
+    const r = keyEl.getBoundingClientRect();
+    const o = { pointerId: id, pointerType: 'touch', isPrimary: true, bubbles: true,
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 - 108 };
+    keyEl.dispatchEvent(new PointerEvent('pointerdown', o));
+    document.querySelector('.pk-rows').dispatchEvent(new PointerEvent('pointerup', o));
+  }, { ch, id: 200 + i });
+  await page.waitForTimeout(30);
+}
+assert.equal((await value()).toLowerCase(), 'zxcvbnm', 'shifted touch coordinates still hit the touched key');
+
 assert.deepEqual(errors, []);
 await browser.close();
 console.log('keyboard e2e: all checks passed');
