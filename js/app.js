@@ -1,976 +1,1142 @@
-import {
-  getLivePalate,
-  saveLivePalate,
-  getProjects,
-  getProject,
-  createProject,
-  archiveSnapshot,
-  getSnapshot,
-  formatDate,
-  getActiveProjectId,
-  setActiveProjectId,
-  exportData,
-  importData,
-  getStats,
-  clearAllData,
-  getTheme,
-  toggleTheme,
-  applyTheme,
-  getPersonalCorpus,
-  savePersonalCorpus,
-  getCorpusStats
-} from './storage.js';
-
+import * as store from './store.js';
+import * as sync from './sync.js';
+import * as search from './search.js';
 import * as morph from './morph.js';
+import * as predictor from './predictor.js';
+import * as keys from './keyboard/keyboard.js';
+import * as lang from './keyboard/language.js';
+import { getTheme, applyTheme, toggleTheme } from './theme.js';
+import { buildMarkdownFiles } from './markdown.js';
+import { createZip } from './zip.js';
 
 const app = document.getElementById('app');
-
-// Apply saved theme on load
 applyTheme(getTheme());
 
 let currentView = 'palate';
 let viewParams = {};
+let cleanupView = () => {};
 
-// Morph prediction state
-let morphInitialized = false;
-let currentSuggestions = [];
-let morphUpdateTimer = null;
+// ============================================
+// Utilities
+// ============================================
 
-// Simple router
+function esc(text) {
+  return String(text ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]
+  ));
+}
+
+function formatDate(ms) {
+  const date = new Date(ms);
+  const now = new Date();
+  const diff = now - date;
+  if (diff < 60 * 1000) return 'just now';
+  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)}m ago`;
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  const opts = { month: 'short', day: 'numeric' };
+  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return date.toLocaleDateString('en-US', opts);
+}
+
+function plural(n, word) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+function showToast(message, action) {
+  document.querySelector('.toast')?.remove();
+  const toast = document.createElement('div');
+  toast.className = action ? 'toast toast-sticky' : 'toast';
+  toast.innerHTML = `<span>${esc(message)}</span>${action ? `<button class="toast-action">${esc(action.label)}</button>` : ''}`;
+  document.body.appendChild(toast);
+  if (action) {
+    toast.querySelector('.toast-action').addEventListener('click', () => {
+      toast.remove();
+      action.onTap();
+    });
+  }
+  setTimeout(() => toast.remove(), action ? 4500 : 2000);
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  showToast('Copied');
+}
+
+function download(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function debounce(fn, ms) {
+  let timer = null;
+  const wrapped = (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+  wrapped.flush = (...args) => {
+    clearTimeout(timer);
+    fn(...args);
+  };
+  wrapped.cancel = () => clearTimeout(timer);
+  return wrapped;
+}
+
+const ICONS = {
+  back: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  library: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5h16M4 12h16M4 19h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  more: '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M9 3h6l-1 6 4 4H6l4-4zM12 13v8" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+};
+
+// ============================================
+// Router
+// ============================================
+
 function navigate(view, params = {}) {
+  document.querySelector('.toast:not(.toast-sticky)')?.remove();
+  cleanupView();
+  cleanupView = () => {};
   currentView = view;
   viewParams = params;
+  keys.setAction(null);
   render();
 }
 
 function render() {
   switch (currentView) {
-    case 'palate':
-      renderPalateView();
-      break;
-    case 'projects':
-      renderProjectsView();
-      break;
-    case 'project':
-      renderProjectView(viewParams.projectId);
-      break;
-    case 'snapshot':
-      renderSnapshotView(viewParams.projectId, viewParams.snapshotId);
-      break;
-    case 'settings':
-      renderSettingsView();
-      break;
-    default:
-      renderPalateView();
+    case 'library': return renderLibraryView();
+    case 'note': return renderNoteView(viewParams.noteId);
+    case 'settings': return renderSettingsView();
+    default: return renderPalateView();
   }
 }
 
-// Toast notification
-function showToast(message) {
-  const existing = document.querySelector('.toast');
-  if (existing) existing.remove();
+// ============================================
+// Shared widgets
+// ============================================
 
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  setTimeout(() => toast.remove(), 2000);
+function syncDotHtml() {
+  return '<button class="sync-dot" id="sync-dot" aria-label="Sync status"><span></span></button>';
 }
 
-// Copy to clipboard
-async function copyToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast('Copied');
-  } catch {
-    // Fallback for older browsers
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-    showToast('Copied');
+function bindSyncDot() {
+  const dot = document.getElementById('sync-dot');
+  if (!dot) return () => {};
+  dot.addEventListener('click', () => navigate('settings', { focus: 'sync' }));
+  return sync.onStatus(({ status, detail }) => {
+    dot.dataset.status = status;
+    dot.title = detail || status;
+  });
+}
+
+/**
+ * Recall strip: related notes for whatever is being written
+ */
+function bindRecall(input, strip, { excludeId = null } = {}) {
+  const update = debounce(() => {
+    const text = input.value.slice(-1500);
+    const hits = search.related(text, { excludeId, limit: 2 });
+    if (!hits.length) {
+      strip.classList.remove('recall-on');
+      strip.innerHTML = '';
+      return;
+    }
+    strip.innerHTML = '<span class="recall-label">Related</span>' + hits.map((h) =>
+      `<button class="recall-chip" data-id="${h.note.id}">${esc(h.note.title)}</button>`
+    ).join('');
+    strip.classList.add('recall-on');
+  }, 900);
+
+  input.addEventListener('input', update);
+  strip.addEventListener('pointerdown', (e) => e.preventDefault());
+  strip.addEventListener('click', (e) => {
+    const chip = e.target.closest('.recall-chip');
+    if (chip) showPeek(chip.dataset.id, input);
+  });
+  update();
+  return () => update.cancel();
+}
+
+function showPeek(noteId, input) {
+  const note = store.getNote(noteId);
+  if (!note) return;
+  const project = note.projectId ? store.getProject(note.projectId) : null;
+  const overlay = sheet(`
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">${esc(note.title)}</div>
+        <div class="modal-sub">${esc(project ? project.name : 'Inbox')} · ${formatDate(note.updatedAt)}</div>
+      </div>
+      <button class="modal-close" data-close>&times;</button>
+    </div>
+    <div class="modal-body peek-body">${esc(note.body)}</div>
+    <div class="modal-actions modal-actions-row">
+      <button class="btn btn-secondary" id="peek-link">Insert [[link]]</button>
+      <button class="btn btn-primary" id="peek-open">Open</button>
+    </div>
+  `, { keepFocus: true });
+  overlay.querySelector('#peek-open').addEventListener('click', () => {
+    overlay.close();
+    navigate('note', { noteId });
+  });
+  overlay.querySelector('#peek-link').addEventListener('click', () => {
+    overlay.close();
+    input.focus();
+    const pos = input.selectionStart ?? input.value.length;
+    const before = input.value.slice(0, pos);
+    const text = (before && !/\s$/.test(before) ? ' ' : '') + `[[${note.title}]] `;
+    input.setSelectionRange(pos, pos);
+    if (!document.execCommand('insertText', false, text)) {
+      input.setRangeText(text, pos, pos, 'end');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+}
+
+/**
+ * Bottom sheet. Returns the overlay element with a close() method.
+ * keepFocus: tapping the sheet doesn't blur the text field underneath.
+ */
+function sheet(innerHtml, { keepFocus = false, className = '' } = {}) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal ${className}">${innerHtml}</div>`;
+  document.body.appendChild(overlay);
+  overlay.close = () => overlay.remove();
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.closest('[data-close]')) overlay.close();
+  });
+  if (keepFocus) {
+    overlay.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest('input, textarea')) e.preventDefault();
+    });
   }
+  keys.decorate(overlay);
+  return overlay;
 }
 
-// Palate View
+/**
+ * Pick a project (or create one). Resolves to a project id, null for Inbox,
+ * or undefined when dismissed.
+ */
+function pickProject({ title = 'Choose project', current = undefined, allowInbox = true } = {}) {
+  return new Promise((resolve) => {
+    const projects = store.listProjects();
+    const overlay = sheet(`
+      <div class="modal-header">
+        <span class="modal-title">${esc(title)}</span>
+        <button class="modal-close" data-close>&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="new-project-row">
+          <input type="text" class="input" id="new-project-name" placeholder="New project…" data-pk enterkeyhint="done">
+          <button class="btn btn-primary btn-small" id="create-project">Add</button>
+        </div>
+        ${allowInbox ? `<div class="project-option ${current === null ? 'selected' : ''}" data-id="">Inbox <span class="option-meta">no project</span></div>` : ''}
+        ${projects.map((p) => `
+          <div class="project-option ${p.id === current ? 'selected' : ''}" data-id="${p.id}">
+            ${esc(p.name)} <span class="option-meta">${store.listNotes({ projectId: p.id }).length}</span>
+          </div>`).join('')}
+      </div>
+    `);
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      overlay.close();
+      resolve(value);
+    };
+    const origClose = overlay.close;
+    overlay.close = () => {
+      origClose();
+      if (!done) {
+        done = true;
+        resolve(undefined);
+      }
+    };
+    overlay.querySelector('.modal-body').addEventListener('click', (e) => {
+      const opt = e.target.closest('.project-option');
+      if (opt) finish(opt.dataset.id || null);
+    });
+    const input = overlay.querySelector('#new-project-name');
+    const create = async () => {
+      const name = input.value.trim();
+      if (!name) return;
+      const project = await store.createProject(name);
+      finish(project.id);
+    };
+    overlay.querySelector('#create-project').addEventListener('click', create);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') create(); });
+  });
+}
+
+// ============================================
+// Palate (capture) view
+// ============================================
+
 function renderPalateView() {
-  const content = getLivePalate();
-  const activeProjectId = getActiveProjectId();
-  const activeProject = activeProjectId ? getProject(activeProjectId) : null;
-
-  const currentTheme = getTheme();
-  const themeIcon = currentTheme === 'dark' ? '☀️' : '🌙';
+  const content = store.getKV('livePalate', '');
+  const activeId = store.getActiveProjectId();
+  const active = activeId ? store.getProject(activeId) : null;
+  const theme = getTheme();
 
   app.innerHTML = `
-    <div class="palate-view">
+    <div class="view palate-view">
       <header class="header">
-        <button class="header-btn" id="nav-projects">Projects</button>
+        <button class="icon-btn" id="nav-library" aria-label="Library">${ICONS.library}</button>
         <button class="project-selector" id="project-selector">
-          <span class="project-selector-label">${activeProject ? escapeHtml(activeProject.name) : 'No Project'}</span>
-          <span class="project-selector-arrow">▼</span>
+          <span class="project-selector-label">${active ? esc(active.name) : 'Inbox'}</span>
+          <span class="project-selector-arrow">▾</span>
         </button>
-        <button class="theme-toggle" id="theme-toggle" title="Toggle theme">${themeIcon}</button>
+        <div class="header-right">
+          ${syncDotHtml()}
+          <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme">${theme === 'dark' ? ICONS.sun : ICONS.moon}</button>
+        </div>
       </header>
       <div class="palate-textarea-wrapper">
-        <textarea
-          class="palate-textarea"
-          id="palate-input"
-          placeholder="Start typing..."
-          autofocus
-        >${escapeHtml(content)}</textarea>
+        <textarea class="palate-textarea" id="palate-input" placeholder="Start typing…" data-pk>${esc(content)}</textarea>
       </div>
-      <div class="palate-bottom" id="palate-bottom">
-        <div class="morph-bar" id="morph-bar">
-          <span class="morph-bar-empty">Start typing to see suggestions...</span>
-        </div>
-        <div class="palate-actions">
-          <button class="btn btn-secondary" id="copy-all">Copy All</button>
-          <button class="btn btn-primary" id="archive">Archive</button>
-        </div>
+      <div class="recall-strip" id="recall"></div>
+      <div class="palate-actions">
+        <button class="btn btn-secondary" id="copy-all">Copy</button>
+        <button class="btn btn-primary" id="archive">Archive${active ? ` to ${esc(active.name)}` : ''}</button>
       </div>
     </div>
   `;
+  keys.decorate(app);
 
   const textarea = document.getElementById('palate-input');
-  const morphBar = document.getElementById('morph-bar');
-  const palateBottom = document.getElementById('palate-bottom');
-  const copyBtn = document.getElementById('copy-all');
-  const archiveBtn = document.getElementById('archive');
-  const projectsBtn = document.getElementById('nav-projects');
-  const projectSelector = document.getElementById('project-selector');
-  const themeToggle = document.getElementById('theme-toggle');
+  const save = debounce(() => store.setKV('livePalate', textarea.value), 250);
+  textarea.addEventListener('input', () => save());
+  textarea.addEventListener('blur', () => save.flush());
 
-  // Theme toggle
-  themeToggle.addEventListener('click', () => {
-    const newTheme = toggleTheme();
-    themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-  });
-
-  // Initialize morph if needed
-  initMorph();
-
-  // Setup keyboard detection for morph bar positioning
-  setupKeyboardDetection(palateBottom);
-
-  // Auto-save on input and update predictions
-  textarea.addEventListener('input', () => {
-    saveLivePalate(textarea.value);
-    scheduleMorphUpdate(textarea);
-  });
-
-  // Also update on key events that might change cursor position
-  textarea.addEventListener('keyup', (e) => {
-    // Update on space, punctuation, or arrow keys
-    if (e.key === ' ' || e.key === 'Enter' ||
-        e.key === '.' || e.key === ',' || e.key === '!' || e.key === '?' ||
-        e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
-        e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      scheduleMorphUpdate(textarea);
-    }
-  });
-
-  // Handle morph bubble taps
-  morphBar.addEventListener('click', (e) => {
-    const bubble = e.target.closest('.morph-bubble');
-    if (bubble) {
-      const word = bubble.dataset.word;
-      insertWordAtCursor(textarea, word);
-      scheduleMorphUpdate(textarea);
-    }
-  });
-
-  // Initial prediction update
-  if (content) {
-    scheduleMorphUpdate(textarea);
-  }
-
-  // Focus textarea
-  setTimeout(() => textarea.focus(), 50);
-
-  copyBtn.addEventListener('click', () => {
-    const text = textarea.value;
-    if (!text.trim()) {
-      showToast('Nothing to copy');
-      return;
-    }
-    copyToClipboard(text);
-  });
-
-  archiveBtn.addEventListener('click', async () => {
+  const archive = async () => {
+    save.flush();
     const text = textarea.value;
     if (!text.trim()) {
       showToast('Nothing to archive');
       return;
     }
-
-    // If active project is set, archive directly
-    const activeId = getActiveProjectId();
-    if (activeId) {
-      await morph.archiveSnapshot(activeId, text, null);
-      saveLivePalate('');
-      showToast('Archived');
-      render();
-    } else {
-      // No active project, show the full modal
-      showArchiveModal(text);
+    let projectId = store.getActiveProjectId();
+    if (projectId === null && store.listProjects().length) {
+      const picked = await pickProject({ title: 'Archive to…', current: null });
+      if (picked === undefined) return;
+      projectId = picked;
     }
+    const note = await store.createNote({ projectId, body: text });
+    await store.setKV('livePalate', '');
+    morph.learn(text).then(refreshVocabulary);
+    showToast('Archived', { label: 'Open', onTap: () => navigate('note', { noteId: note.id }) });
+    render();
+  };
+
+  keys.setAction({ label: 'Archive', onTap: archive });
+  document.getElementById('archive').addEventListener('click', archive);
+  document.getElementById('copy-all').addEventListener('click', () => {
+    if (!textarea.value.trim()) return showToast('Nothing to copy');
+    copyToClipboard(textarea.value);
+  });
+  document.getElementById('nav-library').addEventListener('click', () => {
+    save.flush();
+    navigate('library');
+  });
+  document.getElementById('project-selector').addEventListener('click', async () => {
+    const picked = await pickProject({ title: 'Archive into', current: store.getActiveProjectId() });
+    if (picked === undefined) return;
+    await store.setActiveProjectId(picked);
+    render();
+  });
+  document.getElementById('theme-toggle').addEventListener('click', (e) => {
+    const next = toggleTheme();
+    e.currentTarget.innerHTML = next === 'dark' ? ICONS.sun : ICONS.moon;
   });
 
-  projectsBtn.addEventListener('click', () => {
-    navigate('projects');
-  });
+  const unsubSync = bindSyncDot();
+  const unsubRecall = bindRecall(textarea, document.getElementById('recall'));
+  const edges = initEdgeSwitcher();
+  cleanupView = () => {
+    save.flush();
+    unsubSync();
+    unsubRecall();
+    edges();
+  };
 
-  projectSelector.addEventListener('click', () => {
-    showProjectPickerModal();
-  });
+  // Empty draft: ready to type immediately
+  if (!content) setTimeout(() => textarea.focus(), 50);
+  else textarea.setSelectionRange(content.length, content.length);
 }
 
-// Archive Modal
-function showArchiveModal(content) {
-  const projects = getProjects();
+// ============================================
+// Library view
+// ============================================
 
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
+function renderLibraryView() {
+  const filter = viewParams.filter || { kind: 'all' };
+  const query = viewParams.query || '';
 
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Archive to Project</span>
-        <button class="modal-close" id="modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <input type="text" class="input" id="snapshot-title" placeholder="Title (optional)">
-        <div id="project-list">
-          <div class="project-option project-option-new" data-new="true">
-            + New Project
-          </div>
-          ${projects.map(p => `
-            <div class="project-option" data-id="${p.id}">
-              ${escapeHtml(p.name)}
-            </div>
-          `).join('')}
+  app.innerHTML = `
+    <div class="view library-view">
+      <header class="header">
+        <button class="icon-btn" id="back-palate" aria-label="Back to Palate">${ICONS.back}</button>
+        <span class="header-title">Library</span>
+        <div class="header-right">
+          ${syncDotHtml()}
+          <button class="icon-btn" id="nav-settings" aria-label="Settings">${ICONS.settings}</button>
         </div>
-        <div id="new-project-input" style="display: none; margin-top: 12px;">
-          <input type="text" class="input" id="new-project-name" placeholder="Project name">
-        </div>
+      </header>
+      <div class="search-row">
+        <input type="search" class="search-input" id="search" placeholder="Search notes, #tags…"
+               value="${esc(query)}" data-pk data-pk-cap="off" data-pk-correct="off" enterkeyhint="search">
       </div>
-      <div class="modal-actions">
-        <button class="btn btn-primary" id="confirm-archive" disabled>Archive</button>
-      </div>
+      <div class="chips" id="chips"></div>
+      <div class="project-bar" id="project-bar"></div>
+      <div class="list" id="note-list"></div>
+      <button class="fab" id="new-note" aria-label="New note">${ICONS.plus}</button>
     </div>
   `;
+  keys.decorate(app);
 
-  document.body.appendChild(overlay);
+  const searchInput = document.getElementById('search');
+  const chipsEl = document.getElementById('chips');
+  const listEl = document.getElementById('note-list');
+  const projectBar = document.getElementById('project-bar');
 
-  const closeBtn = overlay.querySelector('#modal-close');
-  const confirmBtn = overlay.querySelector('#confirm-archive');
-  const titleInput = overlay.querySelector('#snapshot-title');
-  const projectList = overlay.querySelector('#project-list');
-  const newProjectSection = overlay.querySelector('#new-project-input');
-  const newProjectInput = overlay.querySelector('#new-project-name');
+  function renderChips() {
+    const projects = store.listProjects();
+    const tags = store.listTags().slice(0, 12);
+    const chip = (kind, id, label, count) => {
+      const on = filter.kind === kind && (filter.id ?? null) === (id ?? null);
+      return `<button class="chip ${on ? 'chip-on' : ''}" data-kind="${kind}" data-id="${esc(id ?? '')}">${esc(label)}${count !== undefined ? `<span class="chip-count">${count}</span>` : ''}</button>`;
+    };
+    chipsEl.innerHTML = [
+      chip('all', null, 'All', store.listNotes().length),
+      chip('inbox', null, 'Inbox', store.listNotes({ projectId: null }).length),
+      ...projects.map((p) => chip('project', p.id, p.name, store.listNotes({ projectId: p.id }).length)),
+      ...tags.map((t) => chip('tag', t.tag, '#' + t.tag, t.count))
+    ].join('');
 
-  let selectedProjectId = null;
-  let isNewProject = false;
-
-  const close = () => overlay.remove();
-
-  closeBtn.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) close();
-  });
-
-  projectList.addEventListener('click', (e) => {
-    const option = e.target.closest('.project-option');
-    if (!option) return;
-
-    // Clear previous selection
-    projectList.querySelectorAll('.project-option').forEach(el => {
-      el.classList.remove('selected');
-    });
-    option.classList.add('selected');
-
-    if (option.dataset.new) {
-      isNewProject = true;
-      selectedProjectId = null;
-      newProjectSection.style.display = 'block';
-      newProjectInput.focus();
-      updateConfirmState();
+    if (filter.kind === 'project' && store.getProject(filter.id)) {
+      projectBar.innerHTML = `
+        <button class="link-btn" id="rename-project">Rename</button>
+        <button class="link-btn link-danger" id="delete-project">Delete project</button>`;
+      projectBar.classList.add('project-bar-on');
     } else {
-      isNewProject = false;
-      selectedProjectId = option.dataset.id;
-      newProjectSection.style.display = 'none';
-      confirmBtn.disabled = false;
-    }
-  });
-
-  newProjectInput.addEventListener('input', updateConfirmState);
-
-  function updateConfirmState() {
-    if (isNewProject) {
-      confirmBtn.disabled = !newProjectInput.value.trim();
-    } else {
-      confirmBtn.disabled = !selectedProjectId;
+      projectBar.innerHTML = '';
+      projectBar.classList.remove('project-bar-on');
     }
   }
 
-  confirmBtn.addEventListener('click', async () => {
-    let targetProjectId = selectedProjectId;
+  function filteredNotes() {
+    const q = searchInput.value;
+    let base;
+    if (q.trim()) {
+      base = search.search(q).map((r) => r.note);
+    } else {
+      base = store.listNotes();
+    }
+    if (filter.kind === 'inbox') base = base.filter((n) => !n.projectId);
+    if (filter.kind === 'project') base = base.filter((n) => n.projectId === filter.id);
+    if (filter.kind === 'tag') base = base.filter((n) => n.tags?.includes(filter.id));
+    return base;
+  }
 
-    if (isNewProject) {
-      const name = newProjectInput.value.trim();
-      if (!name) return;
-      const project = createProject(name);
-      targetProjectId = project.id;
+  function renderList() {
+    const q = searchInput.value;
+    const notes = filteredNotes();
+    viewParams.query = q;
+    let html = '';
+
+    if (!q.trim() && filter.kind === 'all') {
+      const old = search.resurface();
+      if (old) {
+        html += `
+          <div class="resurface" data-id="${old.id}">
+            <div class="resurface-label">From your archive · ${formatDate(old.createdAt)}</div>
+            <div class="resurface-title">${esc(old.title)}</div>
+            <div class="resurface-body">${esc(old.body.slice(0, 160))}</div>
+          </div>`;
+      }
     }
 
-    if (!targetProjectId) return;
+    if (!notes.length) {
+      html += `<div class="empty-state"><p>${q.trim() ? 'No matches.' : 'No notes here yet.<br>Archive something from the Palate to start.'}</p></div>`;
+    } else {
+      html += notes.slice(0, 300).map((n) => {
+        const project = n.projectId ? store.getProject(n.projectId) : null;
+        const preview = q.trim()
+          ? search.snippet(n, q, esc)
+          : esc(n.body.replace(/\s+/g, ' ').trim().slice(n.body.trim().startsWith(n.title) ? n.title.length : 0).trim().slice(0, 120));
+        return `
+          <div class="note-item" data-id="${n.id}">
+            <div class="note-item-title">${n.pinned ? `<span class="pin">${ICONS.pin}</span>` : ''}${esc(n.title)}</div>
+            ${preview ? `<div class="note-item-preview">${preview}</div>` : ''}
+            <div class="note-item-meta">${formatDate(n.updatedAt)}${filter.kind !== 'project' && project ? ` · ${esc(project.name)}` : ''}${n.tags?.length ? ` · ${n.tags.slice(0, 3).map((t) => '#' + esc(t)).join(' ')}` : ''}</div>
+          </div>`;
+      }).join('');
+    }
+    listEl.innerHTML = html;
+  }
 
-    const title = titleInput.value.trim();
-    await morph.archiveSnapshot(targetProjectId, content, title);
+  renderChips();
+  renderList();
 
-    // Clear palate after archiving
-    saveLivePalate('');
-
-    close();
-    showToast('Archived');
-    render();
+  searchInput.addEventListener('input', debounce(renderList, 80));
+  chipsEl.addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if (!c) return;
+    const next = { kind: c.dataset.kind, id: c.dataset.id || null };
+    viewParams.filter = filter.kind === next.kind && filter.id === next.id ? { kind: 'all' } : next;
+    navigate('library', viewParams);
   });
+  listEl.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-id]');
+    if (item) navigate('note', { noteId: item.dataset.id, from: { ...viewParams } });
+  });
+  projectBar.addEventListener('click', async (e) => {
+    const project = store.getProject(filter.id);
+    if (!project) return;
+    if (e.target.id === 'rename-project') {
+      const name = prompt('Rename project', project.name);
+      if (name && name.trim()) {
+        await store.updateProject(project.id, { name: name.trim() });
+        renderChips();
+      }
+    } else if (e.target.id === 'delete-project') {
+      if (confirm(`Delete "${project.name}"? Its notes move to the Inbox.`)) {
+        await store.deleteProject(project.id);
+        viewParams.filter = { kind: 'all' };
+        navigate('library', viewParams);
+      }
+    }
+  });
+  document.getElementById('new-note').addEventListener('click', async () => {
+    const projectId = filter.kind === 'project' ? filter.id : null;
+    const note = await store.createNote({ projectId, title: '', body: '' });
+    navigate('note', { noteId: note.id, from: { ...viewParams }, isNew: true });
+  });
+  document.getElementById('back-palate').addEventListener('click', () => navigate('palate'));
+  document.getElementById('nav-settings').addEventListener('click', () => navigate('settings'));
+
+  const unsubSync = bindSyncDot();
+  const unsubNotes = store.on('notes', (e) => {
+    if (e.detail.remote) {
+      renderChips();
+      renderList();
+    }
+  });
+  cleanupView = () => {
+    unsubSync();
+    unsubNotes();
+  };
 }
 
-// Project Picker Modal (for selecting active project)
-function showProjectPickerModal() {
-  const projects = getProjects();
-  const currentActiveId = getActiveProjectId();
+// ============================================
+// Note view (editor)
+// ============================================
 
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
+function renderNoteView(noteId) {
+  const note = store.getNote(noteId);
+  if (!note || note.deletedAt) {
+    navigate('library');
+    return;
+  }
+  const project = note.projectId ? store.getProject(note.projectId) : null;
+  const back = () => navigate('library', viewParams.from || {});
 
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Select Project</span>
-        <button class="modal-close" id="modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="project-list">
-          <div class="project-option ${!currentActiveId ? 'selected' : ''}" data-id="">
-            No Project
-          </div>
-          <div class="project-option project-option-new" data-new="true">
-            + New Project
-          </div>
-          ${projects.map(p => `
-            <div class="project-option ${p.id === currentActiveId ? 'selected' : ''}" data-id="${p.id}">
-              ${escapeHtml(p.name)}
-            </div>
-          `).join('')}
+  app.innerHTML = `
+    <div class="view note-view">
+      <header class="header">
+        <button class="icon-btn" id="back" aria-label="Back">${ICONS.back}</button>
+        <button class="project-selector" id="move">
+          <span class="project-selector-label">${esc(project ? project.name : 'Inbox')}</span>
+          <span class="project-selector-arrow">▾</span>
+        </button>
+        <div class="header-right">
+          ${syncDotHtml()}
+          <button class="icon-btn" id="menu" aria-label="More">${ICONS.more}</button>
         </div>
-        <div id="new-project-input" style="display: none; margin-top: 12px;">
-          <input type="text" class="input" id="new-project-name" placeholder="Project name">
-          <button class="btn btn-primary" id="create-project" style="margin-top: 8px;">Create</button>
-        </div>
+      </header>
+      <div class="note-editor">
+        <input class="note-title" id="title" value="" placeholder="Title" data-pk enterkeyhint="next">
+        <textarea class="note-body" id="body" placeholder="Write…" data-pk>${esc(note.body)}</textarea>
       </div>
+      <div class="recall-strip" id="recall"></div>
+      <div class="note-footer" id="footer"></div>
     </div>
   `;
+  keys.decorate(app);
 
-  document.body.appendChild(overlay);
+  const titleEl = document.getElementById('title');
+  const bodyEl = document.getElementById('body');
+  const footer = document.getElementById('footer');
+  // Like Apple Notes, the first line is the title. A separate title field
+  // only shows for custom titles (migrated ones, or set from the menu).
+  let titleTouched = note.body.trim() ? note.title !== store.autoTitle(note.body) : false;
+  const showTitle = (on) => titleEl.classList.toggle('hidden', !on);
+  if (titleTouched) titleEl.value = note.title;
+  showTitle(titleTouched);
 
-  const closeBtn = overlay.querySelector('#modal-close');
-  const projectList = overlay.querySelector('#project-list');
-  const newProjectSection = overlay.querySelector('#new-project-input');
-  const newProjectInput = overlay.querySelector('#new-project-name');
-  const createProjectBtn = overlay.querySelector('#create-project');
-
-  const close = () => overlay.remove();
-
-  closeBtn.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) close();
-  });
-
-  projectList.addEventListener('click', (e) => {
-    const option = e.target.closest('.project-option');
-    if (!option) return;
-
-    if (option.dataset.new) {
-      newProjectSection.style.display = 'block';
-      newProjectInput.focus();
-      return;
+  const save = debounce(async () => {
+    const current = store.getNote(noteId);
+    if (!current) return;
+    let title = titleEl.value.trim();
+    if (!titleTouched || !title) title = store.autoTitle(bodyEl.value);
+    if (title !== current.title || bodyEl.value !== current.body) {
+      await store.updateNote(noteId, { title, body: bodyEl.value });
+      renderFooter();
     }
+  }, 400);
 
-    // Select project (or clear if empty id)
-    const projectId = option.dataset.id || null;
-    setActiveProjectId(projectId);
-    close();
-    render();
+  titleEl.addEventListener('input', () => {
+    titleTouched = titleEl.value.trim().length > 0;
+    save();
   });
-
-  createProjectBtn.addEventListener('click', () => {
-    const name = newProjectInput.value.trim();
-    if (!name) return;
-    const project = createProject(name);
-    setActiveProjectId(project.id);
-    close();
-    render();
+  titleEl.addEventListener('blur', () => {
+    if (!titleEl.value.trim()) showTitle(false);
   });
-
-  newProjectInput.addEventListener('keydown', (e) => {
+  titleEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-      createProjectBtn.click();
+      e.preventDefault();
+      bodyEl.focus();
     }
   });
-}
+  bodyEl.addEventListener('input', () => save());
 
-// Projects View
-function renderProjectsView() {
-  const projects = getProjects();
-
-  app.innerHTML = `
-    <div class="view">
-      <header class="header">
-        <button class="header-btn" id="back-palate">Palate</button>
-        <span class="header-title">Projects</span>
-        <button class="header-btn" id="nav-settings">Settings</button>
-      </header>
-      <div class="list" id="projects-list">
-        ${projects.length === 0 ? `
-          <div class="empty-state">
-            <p>No projects yet.<br>Archive something to get started.</p>
-          </div>
-        ` : projects.map(p => `
-          <div class="list-item" data-id="${p.id}">
-            <div class="list-item-content">
-              <div class="list-item-title">${escapeHtml(p.name)}</div>
-              <div class="list-item-meta">${p.snapshots.length} snapshot${p.snapshots.length !== 1 ? 's' : ''}</div>
-            </div>
-            <span class="list-item-arrow">›</span>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
-  document.getElementById('back-palate').addEventListener('click', () => {
-    navigate('palate');
-  });
-
-  document.getElementById('nav-settings').addEventListener('click', () => {
-    navigate('settings');
-  });
-
-  document.getElementById('projects-list').addEventListener('click', (e) => {
-    const item = e.target.closest('.list-item');
-    if (!item) return;
-    navigate('project', { projectId: item.dataset.id });
-  });
-}
-
-// Project View (snapshots list)
-function renderProjectView(projectId) {
-  const project = getProject(projectId);
-
-  if (!project) {
-    navigate('projects');
-    return;
+  function renderFooter() {
+    const n = store.getNote(noteId);
+    if (!n) return;
+    const links = (n.links || []).map((title) => {
+      const target = store.findNoteByTitle(title);
+      return `<button class="link-chip ${target ? '' : 'link-missing'}" data-link="${esc(title)}">[[${esc(title)}]]</button>`;
+    });
+    const backlinks = store.backlinksTo(n).map((b) =>
+      `<button class="link-chip link-back" data-open="${b.id}">← ${esc(b.title)}</button>`);
+    const tags = (n.tags || []).map((t) => `<button class="link-chip link-tag" data-tag="${esc(t)}">#${esc(t)}</button>`);
+    footer.innerHTML = `
+      ${links.length || backlinks.length || tags.length ? `<div class="footer-chips">${[...tags, ...links, ...backlinks].join('')}</div>` : ''}
+      <div class="footer-meta">Edited ${formatDate(n.updatedAt)} · created ${formatDate(n.createdAt)}</div>`;
   }
+  renderFooter();
 
-  app.innerHTML = `
-    <div class="view">
-      <header class="header">
-        <button class="header-btn" id="back-projects">Projects</button>
-        <span class="header-title">${escapeHtml(project.name)}</span>
-        <span style="width: 60px"></span>
-      </header>
-      <div class="list" id="snapshots-list">
-        ${project.snapshots.length === 0 ? `
-          <div class="empty-state">
-            <p>No snapshots in this project yet.</p>
-          </div>
-        ` : project.snapshots.map(s => `
-          <div class="list-item" data-id="${s.id}">
-            <div class="list-item-content">
-              <div class="list-item-title">${escapeHtml(s.title)}</div>
-              <div class="list-item-meta">${formatDate(s.createdAt)}</div>
-            </div>
-            <span class="list-item-arrow">›</span>
-          </div>
-        `).join('')}
+  footer.addEventListener('click', async (e) => {
+    const link = e.target.closest('[data-link]');
+    const open = e.target.closest('[data-open]');
+    const tag = e.target.closest('[data-tag]');
+    save.flush();
+    if (open) navigate('note', { noteId: open.dataset.open, from: viewParams.from });
+    if (tag) navigate('library', { filter: { kind: 'tag', id: tag.dataset.tag } });
+    if (link) {
+      let target = store.findNoteByTitle(link.dataset.link);
+      if (!target) {
+        if (!confirm(`Create a note called "${link.dataset.link}"?`)) return;
+        target = await store.createNote({ projectId: note.projectId, title: link.dataset.link, body: link.dataset.link + '\n\n' });
+      }
+      navigate('note', { noteId: target.id, from: viewParams.from });
+    }
+  });
+
+  document.getElementById('back').addEventListener('click', () => {
+    save.flush();
+    const n = store.getNote(noteId);
+    if (n && viewParams.isNew && !n.body.trim() && !titleTouched) {
+      store.deleteNote(noteId); // discard an untouched new note
+    }
+    back();
+  });
+
+  document.getElementById('move').addEventListener('click', async () => {
+    save.flush();
+    const picked = await pickProject({ title: 'Move to', current: store.getNote(noteId).projectId });
+    if (picked === undefined) return;
+    await store.updateNote(noteId, { projectId: picked }, { snapshot: false });
+    render();
+  });
+
+  document.getElementById('menu').addEventListener('click', () => {
+    save.flush();
+    const n = store.getNote(noteId);
+    const overlay = sheet(`
+      <div class="menu">
+        <button class="menu-item" data-act="pin">${n.pinned ? 'Unpin' : 'Pin to top'}</button>
+        <button class="menu-item" data-act="title">${titleTouched ? 'Edit title' : 'Set a custom title'}</button>
+        <button class="menu-item" data-act="copy">Copy text</button>
+        <button class="menu-item" data-act="history">Version history</button>
+        <button class="menu-item" data-act="palate">Send to Palate</button>
+        <button class="menu-item menu-danger" data-act="delete">Delete note</button>
+        <button class="menu-item menu-cancel" data-close>Cancel</button>
       </div>
-    </div>
-  `;
-
-  document.getElementById('back-projects').addEventListener('click', () => {
-    navigate('projects');
+    `);
+    overlay.querySelector('.menu').addEventListener('click', async (e) => {
+      const act = e.target.dataset.act;
+      if (!act) return;
+      overlay.close();
+      if (act === 'pin') {
+        await store.updateNote(noteId, { pinned: !n.pinned }, { snapshot: false });
+        showToast(n.pinned ? 'Unpinned' : 'Pinned');
+      } else if (act === 'title') {
+        showTitle(true);
+        if (!titleEl.value) titleEl.value = n.title;
+        titleTouched = true;
+        titleEl.focus();
+        titleEl.select();
+      } else if (act === 'copy') {
+        copyToClipboard(n.body);
+      } else if (act === 'history') {
+        showHistory(noteId, () => render());
+      } else if (act === 'palate') {
+        const draft = store.getKV('livePalate', '');
+        await store.setKV('livePalate', draft ? draft + '\n\n' + n.body : n.body);
+        navigate('palate');
+      } else if (act === 'delete') {
+        await store.deleteNote(noteId);
+        back();
+        showToast('Note deleted', { label: 'Undo', onTap: async () => {
+          await store.restoreNote(noteId);
+          navigate('note', { noteId });
+        } });
+      }
+    });
   });
 
-  document.getElementById('snapshots-list').addEventListener('click', (e) => {
-    const item = e.target.closest('.list-item');
+  keys.setAction({ label: 'Done', onTap: () => document.activeElement?.blur() });
+
+  const unsubSync = bindSyncDot();
+  const unsubRecall = bindRecall(bodyEl, document.getElementById('recall'), { excludeId: noteId });
+  const unsubNotes = store.on('notes', (e) => {
+    if (!e.detail.remote || e.detail.id !== noteId) return;
+    const n = store.getNote(noteId);
+    if (!n) return;
+    if (n.deletedAt) return back();
+    // Only adopt remote content when the user isn't mid-edit
+    if (document.activeElement !== bodyEl && document.activeElement !== titleEl) {
+      bodyEl.value = n.body;
+      titleTouched = n.body.trim() ? n.title !== store.autoTitle(n.body) : false;
+      titleEl.value = titleTouched ? n.title : '';
+      showTitle(titleTouched);
+    }
+    renderFooter();
+  });
+  cleanupView = () => {
+    save.flush();
+    unsubSync();
+    unsubRecall();
+    unsubNotes();
+  };
+
+  if (viewParams.isNew) setTimeout(() => bodyEl.focus(), 50);
+}
+
+async function showHistory(noteId, onRestore) {
+  const note = store.getNote(noteId);
+  const [local, remote] = await Promise.all([
+    store.listLocalVersions(noteId),
+    sync.fetchServerVersions(noteId)
+  ]);
+  const seen = new Set();
+  const versions = [...local.map((v) => ({ ...v, source: 'device' })), ...remote.map((v) => ({ ...v, source: 'server' }))]
+    .filter((v) => {
+      const key = v.body + '\u0000' + v.title;
+      if (seen.has(key) || (v.body === note.body && v.title === note.title)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.savedAt - a.savedAt);
+
+  const overlay = sheet(`
+    <div class="modal-header">
+      <span class="modal-title">Version history</span>
+      <button class="modal-close" data-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      ${versions.length ? versions.map((v, i) => `
+        <div class="version-item" data-i="${i}">
+          <div class="version-date">${new Date(v.savedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            <span class="version-source">${v.reason === 'conflict' ? 'conflict copy' : v.source}</span></div>
+          <div class="version-preview">${esc(v.body.replace(/\s+/g, ' ').slice(0, 140))}</div>
+        </div>`).join('') : '<div class="empty-state"><p>No earlier versions yet.<br>Versions are saved as you edit (every 10 minutes at most).</p></div>'}
+    </div>
+  `);
+
+  overlay.querySelector('.modal-body').addEventListener('click', (e) => {
+    const item = e.target.closest('.version-item');
     if (!item) return;
-    navigate('snapshot', { projectId, snapshotId: item.dataset.id });
+    const v = versions[Number(item.dataset.i)];
+    const preview = sheet(`
+      <div class="modal-header">
+        <span class="modal-title">${esc(v.title)}</span>
+        <button class="modal-close" data-close>&times;</button>
+      </div>
+      <div class="modal-body peek-body">${esc(v.body)}</div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="restore">Restore this version</button>
+      </div>
+    `);
+    preview.querySelector('#restore').addEventListener('click', async () => {
+      await store.snapshotNow(noteId);
+      await store.updateNote(noteId, { title: v.title, body: v.body }, { snapshot: false });
+      preview.close();
+      overlay.close();
+      showToast('Version restored');
+      onRestore();
+    });
   });
 }
 
-// Snapshot View (read-only)
-function renderSnapshotView(projectId, snapshotId) {
-  const project = getProject(projectId);
-  const snapshot = getSnapshot(projectId, snapshotId);
+// ============================================
+// Settings view
+// ============================================
 
-  if (!project || !snapshot) {
-    navigate('projects');
-    return;
-  }
-
-  app.innerHTML = `
-    <div class="view">
-      <header class="header">
-        <button class="header-btn" id="back-project">Back</button>
-        <span class="header-title">${escapeHtml(snapshot.title)}</span>
-        <button class="header-btn" id="copy-snapshot">Copy</button>
-      </header>
-      <div class="snapshot-content">${escapeHtml(snapshot.content)}</div>
-    </div>
-  `;
-
-  document.getElementById('back-project').addEventListener('click', () => {
-    navigate('project', { projectId });
-  });
-
-  document.getElementById('copy-snapshot').addEventListener('click', () => {
-    copyToClipboard(snapshot.content);
-  });
-}
-
-// Settings View
 function renderSettingsView() {
-  const stats = getStats();
-  const corpusStats = getCorpusStats();
-  const personalCorpus = getPersonalCorpus();
+  const stats = store.getStats();
+  const corpus = store.getKV('corpus', '');
+  const corpusWords = corpus.trim() ? corpus.trim().split(/\s+/).length : 0;
+  const mode = store.getKV('keyboardMode', 'auto');
+  const autocorrect = store.getKV('autocorrect', true);
+  const hapticsOn = store.getKV('haptics', true);
+  const learned = store.getKV('learnedWords', []);
+  const trash = store.listNotes({ onlyDeleted: true }).filter((n) => n.body.trim());
+  const token = sync.getToken();
 
   app.innerHTML = `
     <div class="view">
       <header class="header">
-        <button class="header-btn" id="back-projects">Back</button>
+        <button class="icon-btn" id="back" aria-label="Back">${ICONS.back}</button>
         <span class="header-title">Settings</span>
-        <span style="width: 50px"></span>
+        <span class="icon-btn-spacer"></span>
       </header>
       <div class="settings-content">
-        <div class="settings-section">
-          <div class="settings-label">Data</div>
-          <div class="settings-stats">
-            ${stats.projectCount} project${stats.projectCount !== 1 ? 's' : ''},
-            ${stats.snapshotCount} snapshot${stats.snapshotCount !== 1 ? 's' : ''}
-          </div>
-        </div>
 
-        <div class="settings-section">
-          <div class="settings-label">Writing Style</div>
-          <p class="settings-hint" style="margin-bottom: 12px">
-            Add text samples of your writing to improve predictions. Paste emails, messages, notes - anything that reflects how you write.
-          </p>
-          <textarea
-            class="corpus-textarea"
-            id="corpus-input"
-            placeholder="Paste your writing samples here...
-
-Example: emails you've sent, messages, notes, blog posts, etc. The more text you add, the better the predictions will match your writing style."
-          >${escapeHtml(personalCorpus)}</textarea>
-          <div class="corpus-stats">
-            <span>${corpusStats.words.toLocaleString()} words</span>
-            <span>${corpusStats.characters.toLocaleString()} characters</span>
+        <section class="settings-section" id="sync-section">
+          <div class="settings-label">Sync &amp; storage</div>
+          <div class="sync-status" id="sync-status"></div>
+          <input type="password" class="input" id="sync-token" placeholder="Sync token (PALATE_TOKEN)"
+                 value="${esc(token)}" data-pk data-pk-cap="off" data-pk-correct="off" autocomplete="off">
+          <div class="row-buttons">
+            <button class="btn btn-primary" id="save-token">${token ? 'Update token' : 'Turn on sync'}</button>
+            <button class="btn btn-secondary" id="sync-now" ${token ? '' : 'disabled'}>Sync now</button>
           </div>
-          <div class="corpus-actions">
+          <p class="settings-hint" id="health-hint">Notes are always saved on this device first. With a token, they also sync to your Postgres database on Vercel.</p>
+        </section>
+
+        <section class="settings-section">
+          <div class="settings-label">Keyboard</div>
+          <div class="segmented" id="kb-mode">
+            ${['auto', 'always', 'off'].map((m) => `<button data-mode="${m}" class="${mode === m ? 'seg-on' : ''}">${{ auto: 'Auto', always: 'Always', off: 'iOS keyboard' }[m]}</button>`).join('')}
+          </div>
+          <p class="settings-hint">Auto uses Palate Keys on touch screens. "iOS keyboard" switches back to the system keyboard (for dictation).</p>
+          <label class="toggle-row"><span>Autocorrect</span><input type="checkbox" id="kb-autocorrect" ${autocorrect ? 'checked' : ''}></label>
+          <label class="toggle-row"><span>Key haptics</span><input type="checkbox" id="kb-haptics" ${hapticsOn ? 'checked' : ''}></label>
+          <div class="toggle-row"><span>Learned words: ${learned.length}</span>${learned.length ? '<button class="link-btn" id="clear-learned">Clear</button>' : ''}</div>
+          <p class="settings-hint">Tips: drag along the space bar to move the cursor · swipe left on ⌫ to delete words · swipe up on a key for its number or symbol · hold a key for accents · backspace right after an autocorrect undoes it and learns the word.</p>
+        </section>
+
+        <section class="settings-section">
+          <div class="settings-label">Writing style</div>
+          <p class="settings-hint" style="margin: 0 0 12px">Paste samples of your writing so predictions match how you write.</p>
+          <textarea class="corpus-textarea" id="corpus" placeholder="Paste emails, messages, notes…" data-pk>${esc(corpus)}</textarea>
+          <div class="corpus-stats"><span>${corpusWords.toLocaleString()} words</span></div>
+          <div class="row-buttons">
             <button class="btn btn-secondary" id="save-corpus">Save</button>
-            <button class="btn btn-primary" id="train-corpus">Train Model</button>
+            <button class="btn btn-primary" id="train">Retrain predictions</button>
           </div>
-        </div>
+        </section>
 
-        <div class="settings-section">
-          <div class="settings-label">Backup</div>
-          <button class="btn btn-secondary settings-btn" id="export-data">Export Data</button>
-          <p class="settings-hint">Download all your data as a JSON file</p>
-        </div>
+        <section class="settings-section">
+          <div class="settings-label">Your data</div>
+          <div class="settings-stats">${plural(stats.noteCount, 'note')} · ${plural(stats.projectCount, 'project')}</div>
+          <button class="btn btn-secondary settings-btn" id="export-md">Export Markdown (.zip)</button>
+          <button class="btn btn-secondary settings-btn" id="export-json">Export full backup (.json)</button>
+          <input type="file" id="import-file" accept=".json" hidden>
+          <button class="btn btn-secondary settings-btn" id="import">Import backup</button>
+          <p class="settings-hint">Markdown files open in any editor (Obsidian, iA Writer, VS Code). The nightly GitHub backup uses the same format.</p>
+        </section>
 
-        <div class="settings-section">
-          <div class="settings-label">Restore</div>
-          <input type="file" id="import-file" accept=".json" style="display: none">
-          <button class="btn btn-secondary settings-btn" id="import-data">Import Data</button>
-          <p class="settings-hint">Restore from a previous backup (replaces current data)</p>
-        </div>
+        ${trash.length ? `
+        <section class="settings-section">
+          <div class="settings-label">Recently deleted (${trash.length})</div>
+          ${trash.slice(0, 30).map((n) => `
+            <div class="trash-item"><span>${esc(n.title)}</span><button class="link-btn" data-restore="${n.id}">Restore</button></div>`).join('')}
+        </section>` : ''}
 
-        <div class="settings-section settings-danger">
-          <div class="settings-label">Danger Zone</div>
-          <button class="btn btn-danger settings-btn" id="clear-data">Clear All Data</button>
-          <p class="settings-hint">Permanently delete all projects and snapshots</p>
-        </div>
+        <section class="settings-section settings-danger">
+          <div class="settings-label">Danger zone</div>
+          <button class="btn btn-danger settings-btn" id="clear-data">Erase everything on this device</button>
+          <p class="settings-hint">Synced data stays in your database.</p>
+        </section>
       </div>
     </div>
   `;
+  keys.decorate(app);
 
-  document.getElementById('back-projects').addEventListener('click', () => {
-    navigate('projects');
+  document.getElementById('back').addEventListener('click', () => navigate('library'));
+
+  // Sync
+  const statusEl = document.getElementById('sync-status');
+  const STATUS_TEXT = {
+    local: 'Local only',
+    synced: 'Synced',
+    syncing: 'Syncing…',
+    pending: 'Changes waiting to sync',
+    offline: 'Offline',
+    error: 'Sync error',
+    unauthorized: 'Token rejected',
+    unconfigured: 'Server not set up'
+  };
+  const unsub = sync.onStatus(({ status, detail }) => {
+    const last = store.getKV('lastSyncAt');
+    statusEl.dataset.status = status;
+    statusEl.innerHTML = `<span class="dot"></span><strong>${STATUS_TEXT[status] || status}</strong>
+      ${last ? `<span class="muted"> · last sync ${formatDate(last)}</span>` : ''}
+      ${detail && status !== 'synced' ? `<div class="muted small">${esc(detail)}</div>` : ''}`;
   });
+  cleanupView = unsub;
 
-  // Personal corpus handlers
-  const corpusInput = document.getElementById('corpus-input');
-
-  document.getElementById('save-corpus').addEventListener('click', () => {
-    savePersonalCorpus(corpusInput.value);
-    showToast('Writing samples saved');
-    render(); // Refresh to update stats
-  });
-
-  document.getElementById('train-corpus').addEventListener('click', async () => {
-    const text = corpusInput.value.trim();
-    if (!text) {
-      showToast('Add some text first');
-      return;
+  const tokenInput = document.getElementById('sync-token');
+  document.getElementById('save-token').addEventListener('click', async () => {
+    const value = tokenInput.value.trim();
+    const hint = document.getElementById('health-hint');
+    if (value) {
+      try {
+        const health = await sync.testConnection(value);
+        if (!health.tokenConfigured) throw new Error('PALATE_TOKEN is not set on the server yet');
+        if (!health.authorized) throw new Error('That token does not match the server');
+        if (!health.databaseConfigured) throw new Error('No database connected to the Vercel project yet');
+        hint.textContent = `Connected. Server has ${plural(health.database?.notes ?? 0, 'note')}.`;
+      } catch (err) {
+        hint.textContent = `Could not verify: ${err.message}`;
+        showToast('Sync not enabled');
+        return;
+      }
     }
+    await sync.setToken(value);
+    showToast(value ? 'Sync on' : 'Sync off');
+    render();
+  });
+  document.getElementById('sync-now').addEventListener('click', () => sync.syncNow());
 
-    savePersonalCorpus(text);
-    showToast('Training model...');
+  // Keyboard
+  document.getElementById('kb-mode').addEventListener('click', async (e) => {
+    const m = e.target.dataset.mode;
+    if (!m) return;
+    await store.setKV('keyboardMode', m);
+    keys.setMode(m);
+    render();
+  });
+  document.getElementById('kb-autocorrect').addEventListener('change', async (e) => {
+    await store.setKV('autocorrect', e.target.checked);
+    keys.setAutocorrect(e.target.checked);
+  });
+  document.getElementById('kb-haptics').addEventListener('change', async (e) => {
+    await store.setKV('haptics', e.target.checked);
+    keys.setHaptics(e.target.checked);
+  });
+  document.getElementById('clear-learned')?.addEventListener('click', async () => {
+    await store.setKV('learnedWords', []);
+    lang.setLearnedWords([]);
+    render();
+  });
 
+  // Writing style
+  const corpusEl = document.getElementById('corpus');
+  document.getElementById('save-corpus').addEventListener('click', async () => {
+    await store.setKV('corpus', corpusEl.value);
+    showToast('Saved');
+    render();
+  });
+  document.getElementById('train').addEventListener('click', async () => {
+    await store.setKV('corpus', corpusEl.value);
+    showToast('Training…');
     try {
-      await morph.trainModelFromCorpus(text);
-      showToast('Model trained!');
-      render();
+      await morph.trainModelFromCorpus(corpusEl.value);
+      await refreshVocabulary();
+      showToast('Predictions retrained');
     } catch (err) {
-      console.error('[Morph] Training error:', err);
+      console.error(err);
       showToast('Training failed');
     }
   });
 
-  document.getElementById('export-data').addEventListener('click', () => {
-    const data = exportData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `palate-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Data exported');
+  // Data
+  const stamp = new Date().toISOString().slice(0, 10);
+  document.getElementById('export-md').addEventListener('click', () => {
+    const files = buildMarkdownFiles(store.listNotes(), store.listProjects(), store.extractTags);
+    download(`palate-notes-${stamp}.zip`, createZip(files));
+    showToast(`Exported ${plural(files.length - 1, 'note')}`);
   });
-
+  document.getElementById('export-json').addEventListener('click', () => {
+    download(`palate-backup-${stamp}.json`, new Blob([store.exportJSON()], { type: 'application/json' }));
+  });
   const fileInput = document.getElementById('import-file');
-  document.getElementById('import-data').addEventListener('click', () => {
-    fileInput.click();
-  });
-
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+  document.getElementById('import').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = importData(event.target.result);
-      if (result.success) {
-        showToast('Data imported');
-        render();
-      } else {
-        showToast('Import failed: ' + result.error);
-      }
-    };
-    reader.readAsText(file);
-  });
-
-  document.getElementById('clear-data').addEventListener('click', () => {
-    if (confirm('Delete all data? This cannot be undone.')) {
-      clearAllData();
-      showToast('All data cleared');
-      navigate('palate');
+    try {
+      await store.importJSON(await file.text());
+      showToast('Imported');
+      render();
+    } catch (err) {
+      showToast('Import failed: ' + err.message);
     }
   });
-}
 
-// Utility
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+  app.querySelectorAll('[data-restore]').forEach((btn) => btn.addEventListener('click', async () => {
+    await store.restoreNote(btn.dataset.restore);
+    showToast('Restored');
+    render();
+  }));
 
-// Morph Bar Functions
-async function initMorph() {
-  if (morphInitialized) return;
-  try {
-    await morph.initialize();
-    morphInitialized = true;
-    console.log('[Morph] Ready');
-  } catch (err) {
-    console.error('[Morph] Init failed:', err);
-  }
-}
-
-function scheduleMorphUpdate(textarea) {
-  // Debounce updates to avoid excessive calls
-  if (morphUpdateTimer) {
-    clearTimeout(morphUpdateTimer);
-  }
-  morphUpdateTimer = setTimeout(() => {
-    updateMorphSuggestions(textarea);
-  }, 50); // 50ms debounce
-}
-
-async function updateMorphSuggestions(textarea) {
-  if (!morphInitialized) return;
-
-  const morphBar = document.getElementById('morph-bar');
-  if (!morphBar) return;
-
-  const text = textarea.value;
-  const cursorPos = textarea.selectionStart;
-
-  try {
-    const suggestions = await morph.getNextWordSuggestions(text, cursorPos, 6);
-    currentSuggestions = suggestions;
-    renderMorphBar(morphBar, suggestions);
-  } catch (err) {
-    console.error('[Morph] Prediction error:', err);
-  }
-}
-
-function renderMorphBar(morphBar, suggestions) {
-  if (!suggestions || suggestions.length === 0) {
-    morphBar.innerHTML = '<span class="morph-bar-empty">Keep typing to see suggestions...</span>';
-    return;
-  }
-
-  // Determine size class based on relative score
-  // Top 1-2 get large, middle get medium, rest get small
-  const bubbles = suggestions.map((s, i) => {
-    let sizeClass = 'morph-bubble-sm';
-    if (i === 0 && s.score > 0.25) {
-      sizeClass = 'morph-bubble-lg';
-    } else if (i <= 1 && s.score > 0.15) {
-      sizeClass = 'morph-bubble-md';
-    } else if (s.score > 0.1) {
-      sizeClass = 'morph-bubble-md';
-    }
-
-    return `<button class="morph-bubble ${sizeClass}" data-word="${escapeHtml(s.word)}">${escapeHtml(s.word)}</button>`;
+  document.getElementById('clear-data').addEventListener('click', async () => {
+    if (!confirm('Erase all notes, projects and settings on this device? This cannot be undone.')) return;
+    await store.clearAll();
+    await morph.clearModel();
+    showToast('Erased');
+    navigate('palate');
   });
 
-  morphBar.innerHTML = bubbles.join('');
+  if (viewParams.focus === 'sync') {
+    document.getElementById('sync-section').scrollIntoView({ block: 'start' });
+  }
 }
 
-function insertWordAtCursor(textarea, word) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const text = textarea.value;
+// ============================================
+// Project switcher (long-press screen edges on the Palate)
+// ============================================
 
-  // Check if we need to handle partial word replacement
-  // Find the start of the current word (if any)
-  let wordStart = start;
-  while (wordStart > 0 && !/\s/.test(text[wordStart - 1])) {
-    wordStart--;
-  }
-
-  // Check if cursor is at end of text or after whitespace
-  const beforeCursor = text.slice(0, start);
-  const isAfterSpace = beforeCursor.length === 0 ||
-                       /\s$/.test(beforeCursor);
-
-  let newText;
-  let newCursorPos;
-
-  if (isAfterSpace) {
-    // Insert word with trailing space
-    newText = text.slice(0, start) + word + ' ' + text.slice(end);
-    newCursorPos = start + word.length + 1;
-  } else {
-    // Replace partial word
-    newText = text.slice(0, wordStart) + word + ' ' + text.slice(end);
-    newCursorPos = wordStart + word.length + 1;
-  }
-
-  textarea.value = newText;
-  textarea.setSelectionRange(newCursorPos, newCursorPos);
-  saveLivePalate(newText);
-
-  // Refocus textarea
-  textarea.focus();
-}
-
-// Keyboard Detection for Morph Bar positioning
-function setupKeyboardDetection(palateBottom) {
-  if (!window.visualViewport) {
-    // Fallback for browsers without Visual Viewport API
-    console.log('[Keyboard] Visual Viewport API not available');
-    return;
-  }
-
-  const viewport = window.visualViewport;
-  let initialHeight = viewport.height;
-  let keyboardOpen = false;
-
-  function updatePosition() {
-    // Position element at the bottom of the visual viewport using top positioning
-    // This is more reliable than bottom positioning on iOS Safari
-    const elementHeight = palateBottom.offsetHeight;
-    const targetTop = viewport.offsetTop + viewport.height - elementHeight;
-
-    palateBottom.style.top = `${targetTop}px`;
-    palateBottom.style.bottom = 'auto';
-  }
-
-  function handleViewportChange() {
-    const currentHeight = viewport.height;
-    const heightDiff = initialHeight - currentHeight;
-
-    // Consider keyboard open if viewport shrinks by more than 150px
-    const isKeyboardOpen = heightDiff > 150;
-
-    if (isKeyboardOpen && !keyboardOpen) {
-      // Keyboard just opened
-      keyboardOpen = true;
-      palateBottom.classList.add('keyboard-open');
-      updatePosition();
-    } else if (!isKeyboardOpen && keyboardOpen) {
-      // Keyboard just closed
-      keyboardOpen = false;
-      palateBottom.classList.remove('keyboard-open');
-      palateBottom.style.top = '';
-      palateBottom.style.bottom = '';
-    } else if (isKeyboardOpen) {
-      // Keyboard is open, update position (tracks scroll and keyboard changes)
-      updatePosition();
-    }
-  }
-
-  viewport.addEventListener('resize', handleViewportChange);
-  viewport.addEventListener('scroll', handleViewportChange);
-
-  window.addEventListener('orientationchange', () => {
-    setTimeout(() => {
-      initialHeight = viewport.height;
-      handleViewportChange();
-    }, 100);
+function initEdgeSwitcher() {
+  const zones = ['left', 'right'].map((side) => {
+    const zone = document.createElement('div');
+    zone.className = `edge-zone edge-zone-${side}`;
+    document.body.appendChild(zone);
+    return zone;
   });
-}
-
-// Project Switcher (iOS app-switcher style)
-function initProjectSwitcher() {
-  // Create edge zones for long-press detection
-  const leftZone = document.createElement('div');
-  leftZone.className = 'edge-zone edge-zone-left';
-  document.body.appendChild(leftZone);
-
-  const rightZone = document.createElement('div');
-  rightZone.className = 'edge-zone edge-zone-right';
-  document.body.appendChild(rightZone);
-
-  let longPressTimer = null;
-  const LONG_PRESS_DURATION = 400;
-
-  function startLongPress(e) {
+  let timer = null;
+  const start = (e) => {
     e.preventDefault();
-    longPressTimer = setTimeout(() => {
-      showProjectSwitcher();
-    }, LONG_PRESS_DURATION);
-  }
-
-  function cancelLongPress() {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  }
-
-  // Touch events for both zones
-  [leftZone, rightZone].forEach(zone => {
-    zone.addEventListener('touchstart', startLongPress, { passive: false });
-    zone.addEventListener('touchend', cancelLongPress);
-    zone.addEventListener('touchmove', cancelLongPress);
-    zone.addEventListener('touchcancel', cancelLongPress);
+    timer = setTimeout(showProjectSwitcher, 400);
+  };
+  const cancel = () => clearTimeout(timer);
+  zones.forEach((zone) => {
+    zone.addEventListener('touchstart', start, { passive: false });
+    zone.addEventListener('touchend', cancel);
+    zone.addEventListener('touchmove', cancel);
+    zone.addEventListener('touchcancel', cancel);
   });
+  return () => zones.forEach((z) => z.remove());
 }
 
 function showProjectSwitcher() {
-  const projects = getProjects();
-  const activeProjectId = getActiveProjectId();
-
+  const projects = store.listProjects();
+  const activeId = store.getActiveProjectId();
   const overlay = document.createElement('div');
   overlay.className = 'switcher-overlay';
-
-  if (projects.length === 0) {
-    overlay.innerHTML = `
-      <div class="switcher-empty">
-        No projects yet.<br>Archive something to create your first project.
-      </div>
-      <div class="switcher-hint">Tap anywhere to close</div>
-    `;
-  } else {
-    overlay.innerHTML = `
-      <div class="switcher-title">Switch Project</div>
-      <div class="switcher-carousel" id="switcher-carousel">
-        ${projects.map(p => {
-          const latestSnapshot = p.snapshots[0];
-          const preview = latestSnapshot
-            ? latestSnapshot.content.slice(0, 200)
-            : 'No snapshots yet';
-          return `
-            <div class="switcher-card ${p.id === activeProjectId ? 'active' : ''}" data-id="${p.id}">
-              <div class="switcher-card-header">
-                <div class="switcher-card-title">${escapeHtml(p.name)}</div>
-                <div class="switcher-card-meta">${p.snapshots.length} snapshot${p.snapshots.length !== 1 ? 's' : ''}</div>
-              </div>
-              <div class="switcher-card-preview">${escapeHtml(preview)}</div>
+  const cards = [{ id: '', name: 'Inbox' }, ...projects];
+  overlay.innerHTML = `
+    <div class="switcher-title">Archive into</div>
+    <div class="switcher-carousel" id="switcher-carousel">
+      ${cards.map((p) => {
+        const notes = store.listNotes({ projectId: p.id || null });
+        const preview = notes[0] ? notes[0].body.slice(0, 200) : 'No notes yet';
+        return `
+          <div class="switcher-card ${(p.id || null) === activeId ? 'active' : ''}" data-id="${p.id}">
+            <div class="switcher-card-header">
+              <div class="switcher-card-title">${esc(p.name)}</div>
+              <div class="switcher-card-meta">${plural(notes.length, 'note')}</div>
             </div>
-          `;
-        }).join('')}
-      </div>
-      <div class="switcher-hint">Tap a project to switch</div>
-    `;
-  }
-
+            <div class="switcher-card-preview">${esc(preview)}</div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div class="switcher-hint">Tap a project to switch</div>
+  `;
   document.body.appendChild(overlay);
 
-  // Animated close function
-  function closeSwitcher(callback) {
+  const close = (cb) => {
     overlay.classList.add('closing');
     overlay.addEventListener('animationend', () => {
       overlay.remove();
-      if (callback) callback();
+      cb?.();
     }, { once: true });
-  }
+  };
 
-  // Scroll to active project
-  const carousel = document.getElementById('switcher-carousel');
-  if (carousel) {
-    const activeCard = carousel.querySelector('.switcher-card.active');
-    if (activeCard) {
-      setTimeout(() => {
-        activeCard.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'center' });
-      }, 10);
-    }
-
-    // Handle card taps
-    carousel.addEventListener('click', (e) => {
-      const card = e.target.closest('.switcher-card');
-      if (card) {
-        const projectId = card.dataset.id;
-        setActiveProjectId(projectId);
-        closeSwitcher(() => {
-          render();
-          showToast('Switched to ' + getProject(projectId).name);
-        });
-      }
-    });
-  }
-
-  // Close on background tap
+  const carousel = overlay.querySelector('#switcher-carousel');
+  setTimeout(() => carousel.querySelector('.switcher-card.active')?.scrollIntoView({ inline: 'center', block: 'center' }), 10);
+  carousel.addEventListener('click', (e) => {
+    const card = e.target.closest('.switcher-card');
+    if (!card) return;
+    const id = card.dataset.id || null;
+    store.setActiveProjectId(id).then(() => close(() => {
+      render();
+      showToast('Archiving into ' + (id ? store.getProject(id).name : 'Inbox'));
+    }));
+  });
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay || e.target.classList.contains('switcher-hint') || e.target.classList.contains('switcher-empty')) {
-      closeSwitcher();
-    }
+    if (e.target === overlay || e.target.classList.contains('switcher-hint')) close();
   });
 }
 
-// Initialize
-initProjectSwitcher();
-render();
+// ============================================
+// Boot
+// ============================================
+
+async function refreshVocabulary() {
+  lang.setPersonalVocabulary(await morph.getVocabulary());
+}
+
+async function boot() {
+  try {
+    await store.init();
+  } catch (err) {
+    console.error('[store] init failed', err);
+    app.innerHTML = '<div class="empty-state"><p>Storage is unavailable in this browser mode (private browsing?).</p></div>';
+    return;
+  }
+
+  keys.init({
+    mode: store.getKV('keyboardMode', 'auto'),
+    autocorrect: store.getKV('autocorrect', true),
+    haptics: store.getKV('haptics', true),
+    onLearn: (word) => {
+      const list = store.getKV('learnedWords', []);
+      const w = word.toLowerCase();
+      if (!list.includes(w)) {
+        const next = [...list, w];
+        lang.setLearnedWords(next); // effective immediately, persisted async
+        store.setKV('learnedWords', next);
+      }
+    }
+  });
+  lang.setLearnedWords(store.getKV('learnedWords', []));
+  lang.setContextSource((context) => predictor.getContextCandidates(context));
+
+  render();
+  sync.start();
+
+  // Heavier work after first paint
+  lang.loadDictionary().then(() => keys.refresh()).catch((err) => console.warn('[keys] dictionary', err));
+  morph.initialize().then(refreshVocabulary).then(() => keys.refresh());
+}
+
+boot();

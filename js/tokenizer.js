@@ -3,8 +3,10 @@
  * Handles word tokenization with normalization for n-gram counting
  */
 
-// Punctuation that should be treated as word boundaries
-const PUNCTUATION = /[.,!?;:'"()\[\]{}—–\-\/\\@#$%^&*+=<>|`~]+/g;
+// Punctuation that should be treated as word boundaries. Apostrophes are
+// kept so contractions ("don't", "I'm") stay single tokens.
+const PUNCTUATION = /[.,!?;:"()\[\]{}—–\-\/\\@#$%^&*+=<>|`~]+/g;
+const EDGE_QUOTES = /^'+|'+$/g;
 
 // Whitespace pattern
 const WHITESPACE = /\s+/g;
@@ -26,6 +28,7 @@ export function tokenize(text, options = {}) {
 
   // Replace punctuation with spaces, then split on whitespace
   const cleaned = text
+    .replace(/[\u2018\u2019]/g, "'")
     .replace(PUNCTUATION, ' ')
     .replace(WHITESPACE, ' ')
     .trim();
@@ -34,7 +37,10 @@ export function tokenize(text, options = {}) {
     return [];
   }
 
-  const words = cleaned.split(' ').filter(w => w.length > 0);
+  const words = cleaned
+    .split(' ')
+    .map(w => w.replace(EDGE_QUOTES, ''))
+    .filter(w => w.length > 0);
 
   if (preserveCase) {
     return words.map(w => ({

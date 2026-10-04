@@ -266,3 +266,22 @@ export async function predictInterpolated(
     score: totalScore > 0 ? r.score / totalScore : 0
   }));
 }
+
+/**
+ * Personal vocabulary: word -> weighted count
+ */
+export async function getVocabulary() {
+  await loadIntoMemory();
+  return memoryUnigrams || new Map();
+}
+
+/**
+ * Raw candidate lists for the keyboard's own ranking
+ */
+export async function getContextCandidates(context) {
+  await loadIntoMemory();
+  const ctx = context.map(normalizeWord);
+  const tri = ctx.length >= 2 ? memoryTrigrams?.get(`${ctx[ctx.length - 2]}|${ctx[ctx.length - 1]}`) || [] : [];
+  const bi = ctx.length >= 1 ? memoryBigrams?.get(ctx[ctx.length - 1]) || [] : [];
+  return { trigrams: tri, bigrams: bi, unigrams: memoryUnigrams || new Map() };
+}
