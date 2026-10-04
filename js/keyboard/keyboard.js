@@ -51,6 +51,9 @@ const s = {
   predSeq: 0,
   predFrame: 0,
   expectedCaret: -1,
+  offset: { x: 0, y: 0 },  // learned touch-vs-layout correction (iOS)
+  debug: false,
+  debugEl: null,
   onLearn: () => {},
   onVisibility: () => {}
 };
@@ -68,8 +71,17 @@ export function init({ mode = 'auto', autocorrect = true, haptics: hap = true, o
   setMode(mode);
 
   document.addEventListener('focusin', (e) => {
+    pinScroll();
+    requestAnimationFrame(pinScroll);
+    setTimeout(pinScroll, 350);
     if (s.enabled && isPkField(e.target)) show(e.target);
   });
+  // iOS scrolls the document when a field is focused, even with overflow
+  // hidden. Fixed elements then render in one place while touches report
+  // another (taps land rows above the key). Keep the page pinned at the top.
+  window.addEventListener('scroll', pinScroll, { passive: true });
+  window.visualViewport?.addEventListener('scroll', pinScroll);
+  window.visualViewport?.addEventListener('resize', () => s.visible && requestAnimationFrame(measure));
   document.addEventListener('focusout', () => {
     setTimeout(() => {
       if (!isPkField(document.activeElement)) hide();
@@ -80,6 +92,21 @@ export function init({ mode = 'auto', autocorrect = true, haptics: hap = true, o
     if (e.target === s.target) schedulePredictions();
   });
   window.addEventListener('resize', () => s.visible && requestAnimationFrame(measure));
+}
+
+function pinScroll() {
+  if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+  const se = document.scrollingElement;
+  if (se && se.scrollTop) se.scrollTop = 0;
+  if (document.body.scrollTop) document.body.scrollTop = 0;
+}
+
+export function setDebug(on) {
+  s.debug = on;
+  if (!on && s.debugEl) {
+    s.debugEl.remove();
+    s.debugEl = null;
+  }
 }
 
 export function setMode(mode) {
@@ -315,19 +342,47 @@ function isLetterKey(key) {
   return key && !key.def.action && /^[a-z]$/.test(key.def.k);
 }
 
+function keyFromElement(el) {
+  const keyEl = el?.closest?.('.pk-key');
+  return keyEl ? s.keys.find((k) => k.el === keyEl) || null : null;
+}
+
+/**
+ * The browser's own hit target is the key the user actually sees under
+ * their finger. If the reported coordinates fall outside that key, the
+ * coordinate space is shifted (iOS scroll quirk): learn the shift and apply
+ * it to every geometric test (slides, gaps between keys, biasing).
+ */
+function calibrate(key, x, y) {
+  const r = key.rect;
+  if (!r) return false;
+  const inside = x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1;
+  // Coordinates agree with what's on screen: no correction needed.
+  // Otherwise the true touch point is somewhere on this key; use its centre.
+  s.offset = inside ? { x: 0, y: 0 } : { x: x - (r.left + r.width / 2), y: y - (r.top + r.height / 2) };
+  return !inside;
+}
+
+function point(e) {
+  return { x: e.clientX - s.offset.x, y: e.clientY - s.offset.y };
+}
+
 /**
  * Nearest key (no dead zones between keys). In the letter layer, touches
  * near a key edge are biased towards the letter most likely to come next.
+ * `preferred` is the key the browser reports under the finger, if any.
  */
-function hitTest(x, y) {
-  let best = null;
+function hitTest(x, y, preferred = null) {
+  let best = preferred;
   let bestD = Infinity;
-  for (const key of s.keys) {
-    if (!key.rect) continue;
-    const d = rectDistance(key.rect, x, y);
-    if (d < bestD) {
-      bestD = d;
-      best = key;
+  if (!best) {
+    for (const key of s.keys) {
+      if (!key.rect) continue;
+      const d = rectDistance(key.rect, x, y);
+      if (d < bestD) {
+        bestD = d;
+        best = key;
+      }
     }
   }
   if (!isLetterKey(best) || s.layer !== 'letters') return best;
@@ -380,17 +435,23 @@ function onDown(e) {
 
   // Key rects are cheap to read and may have moved (slide-in, rotation)
   if (!s.touches.size) measureKeys();
-  const key = hitTest(e.clientX, e.clientY);
+  pinScroll();
+  const native = keyFromElement(e.target);
+  const shifted = native ? calibrate(native, e.clientX, e.clientY) : false;
+  const p = point(e);
+  // When coordinates were shifted, the browser's target is the only truth
+  const key = shifted ? native : hitTest(p.x, p.y, native);
+  if (s.debug) showDebug(e, p, key);
   if (!key) return;
   try { s.rowsEl.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
 
   const t = {
     id: e.pointerId,
     key,
-    x0: e.clientX,
-    y0: e.clientY,
-    ax: e.clientX,
-    ay: e.clientY,
+    x0: p.x,
+    y0: p.y,
+    ax: p.x,
+    ay: p.y,
     mode: 'tap',
     timer: 0,
     repeat: 0,
@@ -419,8 +480,7 @@ function onDown(e) {
 function onMove(e) {
   const t = s.touches.get(e.pointerId);
   if (!t) return;
-  const x = e.clientX;
-  const y = e.clientY;
+  const { x, y } = point(e);
   const dx = x - t.x0;
   const dy = y - t.y0;
   const a = t.key.def.action;
@@ -506,6 +566,22 @@ function onCancel(e) {
   press(t.key, false);
   hidePopup();
   endTrackpad();
+}
+
+function showDebug(e, p, key) {
+  if (!s.debugEl) {
+    s.debugEl = document.createElement('div');
+    s.debugEl.className = 'pk-debug';
+    s.debugEl.innerHTML = '<div class="pk-debug-raw"></div><div class="pk-debug-fixed"></div><div class="pk-debug-info"></div>';
+    document.body.appendChild(s.debugEl);
+  }
+  const [raw, fixed, info] = s.debugEl.children;
+  raw.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+  fixed.style.transform = `translate(${p.x}px, ${p.y}px)`;
+  const vv = window.visualViewport;
+  info.textContent = `key ${key ? (key.def.k || key.def.action) : '–'} · target ${keyFromElement(e.target) ? 'key' : e.target.className || e.target.tagName}` +
+    ` · offset ${Math.round(s.offset.x)},${Math.round(s.offset.y)} · scrollY ${Math.round(window.scrollY)}` +
+    ` · vv ${vv ? `${Math.round(vv.offsetTop)}/${Math.round(vv.height)}@${vv.scale.toFixed(2)}` : 'n/a'} · inner ${window.innerHeight}`;
 }
 
 function clearTimers(t) {

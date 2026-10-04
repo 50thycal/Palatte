@@ -815,6 +815,7 @@ function renderSettingsView() {
   const mode = store.getKV('keyboardMode', 'auto');
   const autocorrect = store.getKV('autocorrect', true);
   const hapticsOn = store.getKV('haptics', true);
+  const touchDebug = store.getKV('touchDebug', false);
   const learned = store.getKV('learnedWords', []);
   const trash = store.listNotes({ onlyDeleted: true }).filter((n) => n.body.trim());
   const token = sync.getToken();
@@ -848,6 +849,7 @@ function renderSettingsView() {
           <p class="settings-hint">Auto uses Palate Keys on touch screens. "iOS keyboard" switches back to the system keyboard (for dictation).</p>
           <label class="toggle-row"><span>Autocorrect</span><input type="checkbox" id="kb-autocorrect" ${autocorrect ? 'checked' : ''}></label>
           <label class="toggle-row"><span>Key haptics</span><input type="checkbox" id="kb-haptics" ${hapticsOn ? 'checked' : ''}></label>
+          <label class="toggle-row"><span>Touch debug overlay</span><input type="checkbox" id="kb-debug" ${touchDebug ? 'checked' : ''}></label>
           <div class="toggle-row"><span>Learned words: ${learned.length}</span>${learned.length ? '<button class="link-btn" id="clear-learned">Clear</button>' : ''}</div>
           <p class="settings-hint">Tips: drag along the space bar to move the cursor · swipe left on ⌫ to delete words · swipe up on a key for its number or symbol · hold a key for accents · backspace right after an autocorrect undoes it and learns the word.</p>
         </section>
@@ -951,6 +953,10 @@ function renderSettingsView() {
   document.getElementById('kb-haptics').addEventListener('change', async (e) => {
     await store.setKV('haptics', e.target.checked);
     keys.setHaptics(e.target.checked);
+  });
+  document.getElementById('kb-debug').addEventListener('change', async (e) => {
+    await store.setKV('touchDebug', e.target.checked);
+    keys.setDebug(e.target.checked);
   });
   document.getElementById('clear-learned')?.addEventListener('click', async () => {
     await store.setKV('learnedWords', []);
@@ -1128,6 +1134,7 @@ async function boot() {
       }
     }
   });
+  keys.setDebug(store.getKV('touchDebug', false));
   lang.setLearnedWords(store.getKV('learnedWords', []));
   lang.setContextSource((context) => predictor.getContextCandidates(context));
 
