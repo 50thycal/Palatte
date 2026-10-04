@@ -8,6 +8,8 @@ import * as lang from './keyboard/language.js';
 import { getTheme, applyTheme, toggleTheme } from './theme.js';
 import { buildMarkdownFiles } from './markdown.js';
 import { createZip } from './zip.js';
+import * as organizer from './organize/organizer.js';
+import * as llm from './organize/llm.js';
 
 const app = document.getElementById('app');
 applyTheme(getTheme());
@@ -125,6 +127,9 @@ function navigate(view, params = {}) {
 }
 
 function render() {
+  // Re-rendering a view must release the previous render's listeners
+  cleanupView();
+  cleanupView = () => {};
   switch (currentView) {
     case 'library': return renderLibraryView();
     case 'note': return renderNoteView(viewParams.noteId);
@@ -241,7 +246,7 @@ function sheet(innerHtml, { keepFocus = false, className = '' } = {}) {
  * Pick a project (or create one). Resolves to a project id, null for Inbox,
  * or undefined when dismissed.
  */
-function pickProject({ title = 'Choose project', current = undefined, allowInbox = true } = {}) {
+function pickProject({ title = 'Choose project', current = undefined, allowInbox = true, inboxLabel = 'Inbox' } = {}) {
   return new Promise((resolve) => {
     const projects = store.listProjects();
     const overlay = sheet(`
@@ -254,7 +259,7 @@ function pickProject({ title = 'Choose project', current = undefined, allowInbox
           <input type="text" class="input" id="new-project-name" placeholder="New project…" data-pk enterkeyhint="done">
           <button class="btn btn-primary btn-small" id="create-project">Add</button>
         </div>
-        ${allowInbox ? `<div class="project-option ${current === null ? 'selected' : ''}" data-id="">Inbox <span class="option-meta">no project</span></div>` : ''}
+        ${allowInbox ? `<div class="project-option ${current === null ? 'selected' : ''}" data-id="">${esc(inboxLabel)} <span class="option-meta">${inboxLabel === 'Inbox' ? 'no project' : 'organizer picks'}</span></div>` : ''}
         ${projects.map((p) => `
           <div class="project-option ${p.id === current ? 'selected' : ''}" data-id="${p.id}">
             ${esc(p.name)} <span class="option-meta">${store.listNotes({ projectId: p.id }).length}</span>
@@ -307,7 +312,7 @@ function renderPalateView() {
       <header class="header">
         <button class="icon-btn" id="nav-library" aria-label="Library">${ICONS.library}</button>
         <button class="project-selector" id="project-selector">
-          <span class="project-selector-label">${active ? esc(active.name) : 'Inbox'}</span>
+          <span class="project-selector-label">${active ? esc(active.name) : (organizer.isAuto() ? 'Auto-file' : 'Inbox')}</span>
           <span class="project-selector-arrow">▾</span>
         </button>
         <div class="header-right">
@@ -339,8 +344,9 @@ function renderPalateView() {
       showToast('Nothing to archive');
       return;
     }
+    const auto = organizer.isAuto();
     let projectId = store.getActiveProjectId();
-    if (projectId === null && store.listProjects().length) {
+    if (!auto && projectId === null && store.listProjects().length) {
       const picked = await pickProject({ title: 'Archive to…', current: null });
       if (picked === undefined) return;
       projectId = picked;
@@ -348,7 +354,9 @@ function renderPalateView() {
     const note = await store.createNote({ projectId, body: text });
     await store.setKV('livePalate', '');
     morph.learn(text).then(refreshVocabulary);
-    showToast('Archived', { label: 'Open', onTap: () => navigate('note', { noteId: note.id }) });
+    // Auto mode: just write. Filing, title, tags and tidy-up happen in the background
+    if (auto) organizer.enqueue(note.id, { keepProject: projectId !== null });
+    showToast(auto ? 'Archived · organizing' : 'Archived', { label: 'Open', onTap: () => navigate('note', { noteId: note.id }) });
     render();
   };
 
@@ -363,7 +371,11 @@ function renderPalateView() {
     navigate('library');
   });
   document.getElementById('project-selector').addEventListener('click', async () => {
-    const picked = await pickProject({ title: 'Archive into', current: store.getActiveProjectId() });
+    const picked = await pickProject({
+      title: organizer.isAuto() ? 'Archive into (or Auto-file)' : 'Archive into',
+      current: store.getActiveProjectId(),
+      inboxLabel: organizer.isAuto() ? 'Auto-file' : 'Inbox'
+    });
     if (picked === undefined) return;
     await store.setActiveProjectId(picked);
     render();
@@ -492,7 +504,7 @@ function renderLibraryView() {
           <div class="note-item" data-id="${n.id}">
             <div class="note-item-title">${n.pinned ? `<span class="pin">${ICONS.pin}</span>` : ''}${esc(n.title)}</div>
             ${preview ? `<div class="note-item-preview">${preview}</div>` : ''}
-            <div class="note-item-meta">${formatDate(n.updatedAt)}${filter.kind !== 'project' && project ? ` · ${esc(project.name)}` : ''}${n.tags?.length ? ` · ${n.tags.slice(0, 3).map((t) => '#' + esc(t)).join(' ')}` : ''}</div>
+            <div class="note-item-meta">${organizer.isQueued(n.id) ? '<span class="organizing">✨ organizing…</span> · ' : ''}${formatDate(n.updatedAt)}${filter.kind !== 'project' && project ? ` · ${esc(project.name)}` : ''}${n.tags?.length ? ` · ${n.tags.slice(0, 3).map((t) => '#' + esc(t)).join(' ')}` : ''}</div>
           </div>`;
       }).join('');
     }
@@ -540,15 +552,20 @@ function renderLibraryView() {
   document.getElementById('nav-settings').addEventListener('click', () => navigate('settings'));
 
   const unsubSync = bindSyncDot();
-  const unsubNotes = store.on('notes', (e) => {
-    if (e.detail.remote) {
-      renderChips();
-      renderList();
-    }
-  });
+  // Remote sync and background organizing both change notes under us
+  const refresh = debounce(() => {
+    renderChips();
+    renderList();
+  }, 250);
+  const unsubNotes = store.on('notes', refresh);
+  const unsubProjects = store.on('projects', refresh);
+  const unsubOrg = organizer.onStatus(refresh);
   cleanupView = () => {
+    refresh.cancel();
     unsubSync();
     unsubNotes();
+    unsubProjects();
+    unsubOrg();
   };
 }
 
@@ -578,6 +595,7 @@ function renderNoteView(noteId) {
           <button class="icon-btn" id="menu" aria-label="More">${ICONS.more}</button>
         </div>
       </header>
+      <div class="organize-banner" id="org-banner"></div>
       <div class="note-editor">
         <input class="note-title" id="title" value="" placeholder="Title" data-pk enterkeyhint="next">
         <textarea class="note-body" id="body" placeholder="Write…" data-pk>${esc(note.body)}</textarea>
@@ -598,9 +616,12 @@ function renderNoteView(noteId) {
   if (titleTouched) titleEl.value = note.title;
   showTitle(titleTouched);
 
+  // Set when the note's text is replaced underneath the editor (undo,
+  // organize): the editor's stale copy must not be saved back over it
+  let saveDisabled = false;
   const save = debounce(async () => {
     const current = store.getNote(noteId);
-    if (!current) return;
+    if (!current || saveDisabled) return;
     let title = titleEl.value.trim();
     if (!titleTouched || !title) title = store.autoTitle(bodyEl.value);
     if (title !== current.title || bodyEl.value !== current.body) {
@@ -639,6 +660,93 @@ function renderNoteView(noteId) {
       <div class="footer-meta">Edited ${formatDate(n.updatedAt)} · created ${formatDate(n.createdAt)}</div>`;
   }
   renderFooter();
+
+  // ---- Organizer banner ----
+  const banner = document.getElementById('org-banner');
+  organizer.setBusyNote(noteId);
+
+  function renderBanner() {
+    const rec = organizer.getRecord(noteId);
+    if (organizer.isQueued(noteId)) {
+      banner.innerHTML = `<span>⏳ Will organize when you close this note</span>
+        <button class="link-btn" data-org="now">Organize now</button>`;
+      banner.classList.add('on');
+      return;
+    }
+    if (!rec || rec.dismissed || rec.undone) {
+      banner.classList.remove('on');
+      banner.innerHTML = '';
+      return;
+    }
+    const r = rec.report || {};
+    const bits = [];
+    if (rec.changed.includes('title')) bits.push('title');
+    if (r.project) bits.push(`filed in ${esc(store.getProject(r.project)?.name || 'project')}`);
+    if (r.tagsAdded?.length) bits.push(r.tagsAdded.map((t) => '#' + esc(t)).join(' '));
+    if (r.todosAdded) bits.push(`${r.todosAdded} to-do${r.todosAdded === 1 ? '' : 's'}`);
+    if (r.cleanup === 'applied') bits.push('cleaned up');
+    if (r.cleanup === 'rejected') bits.push('kept your wording');
+    banner.innerHTML = `
+      <span>✨ Organized${rec.method === 'basic' ? ' (basic)' : ''}${bits.length ? ': ' + bits.join(' · ') : ''}</span>
+      <span class="banner-actions">
+        ${r.suggestedProject ? `<button class="link-btn" data-org="project">Create “${esc(r.suggestedProject)}” &amp; move</button>` : ''}
+        ${rec.changed.length ? '<button class="link-btn" data-org="original">See original</button><button class="link-btn" data-org="undo">Undo</button>' : ''}
+        <button class="link-btn banner-close" data-org="dismiss" aria-label="Dismiss">✕</button>
+      </span>`;
+    banner.classList.add('on');
+  }
+  renderBanner();
+
+  async function organizeNow() {
+    save.flush();
+    saveDisabled = true;
+    document.activeElement?.blur();
+    bodyEl.readOnly = true;
+    titleEl.readOnly = true;
+    banner.innerHTML = '<span>✨ Organizing…</span>';
+    banner.classList.add('on');
+    await organizer.enqueue(noteId, { keepProject: Boolean(store.getNote(noteId)?.projectId) });
+    organizer.setBusyNote(null);
+    const stop = organizer.onStatus(() => {
+      if (!organizer.isQueued(noteId)) {
+        stop();
+        if (currentView === 'note' && viewParams.noteId === noteId) render();
+      }
+    });
+  }
+
+  banner.addEventListener('click', async (e) => {
+    const act = e.target.closest('[data-org]')?.dataset.org;
+    if (!act) return;
+    const rec = organizer.getRecord(noteId);
+    if (act === 'now') organizeNow();
+    if (act === 'dismiss') {
+      await organizer.dismiss(noteId);
+      renderBanner();
+    }
+    if (act === 'undo') {
+      save.flush();
+      saveDisabled = true;
+      await organizer.undo(noteId);
+      showToast('Restored your original');
+      render();
+    }
+    if (act === 'project') {
+      save.flush();
+      const project = await organizer.acceptSuggestedProject(noteId);
+      if (project) showToast(`Moved to ${project.name}`);
+      render();
+    }
+    if (act === 'original' && rec) {
+      sheet(`
+        <div class="modal-header">
+          <span class="modal-title">Original</span>
+          <button class="modal-close" data-close>&times;</button>
+        </div>
+        <div class="modal-body peek-body">${esc(rec.before.body)}</div>
+      `);
+    }
+  });
 
   footer.addEventListener('click', async (e) => {
     const link = e.target.closest('[data-link]');
@@ -682,6 +790,7 @@ function renderNoteView(noteId) {
         <button class="menu-item" data-act="pin">${n.pinned ? 'Unpin' : 'Pin to top'}</button>
         <button class="menu-item" data-act="title">${titleTouched ? 'Edit title' : 'Set a custom title'}</button>
         <button class="menu-item" data-act="copy">Copy text</button>
+        <button class="menu-item" data-act="organize">Organize this note</button>
         <button class="menu-item" data-act="history">Version history</button>
         <button class="menu-item" data-act="palate">Send to Palate</button>
         <button class="menu-item menu-danger" data-act="delete">Delete note</button>
@@ -703,8 +812,14 @@ function renderNoteView(noteId) {
         titleEl.select();
       } else if (act === 'copy') {
         copyToClipboard(n.body);
+      } else if (act === 'organize') {
+        organizeNow();
       } else if (act === 'history') {
-        showHistory(noteId, () => render());
+        save.flush();
+        showHistory(noteId, () => {
+          saveDisabled = true;
+          render();
+        });
       } else if (act === 'palate') {
         const draft = store.getKV('livePalate', '');
         await store.setKV('livePalate', draft ? draft + '\n\n' + n.body : n.body);
@@ -743,6 +858,7 @@ function renderNoteView(noteId) {
     unsubSync();
     unsubRecall();
     unsubNotes();
+    organizer.setBusyNote(null);
   };
 
   if (viewParams.isNew) setTimeout(() => bodyEl.focus(), 50);
@@ -841,6 +957,31 @@ function renderSettingsView() {
           <p class="settings-hint" id="health-hint">Notes are always saved on this device first. With a token, they also sync to your Postgres database on Vercel.</p>
         </section>
 
+        <section class="settings-section" id="organize-section">
+          <div class="settings-label">Auto-organize</div>
+          <label class="toggle-row"><span>Organize notes when I archive</span><input type="checkbox" id="org-auto" ${organizer.isAuto() ? 'checked' : ''}></label>
+          <p class="settings-hint">Gives each note a title, files it in a project, adds #tags, fixes spelling and punctuation, and pulls to-dos into a checklist. The original is kept in version history with one-tap Undo.</p>
+          <div class="org-engine">
+            <div class="org-engine-head">
+              <strong>On-device model</strong>
+              <span class="org-chip" id="org-ready"></span>
+            </div>
+            <div class="muted small" id="org-support">Checking this device…</div>
+            <div class="segmented" id="org-model">
+              ${Object.values(llm.MODELS).map((m) => `<button data-model="${m.key}" class="${organizer.modelKey() === m.key ? 'seg-on' : ''}">${m.key === 'standard' ? 'Standard 3B' : 'Lite 1.5B'}</button>`).join('')}
+            </div>
+            <div class="org-progress" id="org-progress"><div></div></div>
+            <div class="muted small" id="org-status"></div>
+            <div class="row-buttons">
+              <button class="btn btn-primary" id="org-download"></button>
+              <button class="btn btn-secondary" id="org-delete">Remove</button>
+            </div>
+            <p class="settings-hint">Runs entirely on your phone's GPU: notes never leave the device and it works offline. Keep Palate open while it downloads. Until it's downloaded, a basic rule-based tidy-up is used.</p>
+          </div>
+          <button class="btn btn-secondary settings-btn" id="org-all">Organize existing notes</button>
+          <div class="muted small" id="org-queue"></div>
+        </section>
+
         <section class="settings-section">
           <div class="settings-label">Keyboard</div>
           <div class="segmented" id="kb-mode">
@@ -937,6 +1078,82 @@ function renderSettingsView() {
     render();
   });
   document.getElementById('sync-now').addEventListener('click', () => sync.syncNow());
+
+  // Organizer
+  const orgReady = document.getElementById('org-ready');
+  const orgSupport = document.getElementById('org-support');
+  const orgProgress = document.getElementById('org-progress');
+  const orgStatus = document.getElementById('org-status');
+  const orgDownload = document.getElementById('org-download');
+  const orgDelete = document.getElementById('org-delete');
+  const orgQueue = document.getElementById('org-queue');
+  let deviceOk = false;
+
+  function paintOrganizer(st = organizer.getStatus()) {
+    const model = llm.MODELS[organizer.modelKey()];
+    const ready = organizer.isModelReady();
+    orgReady.textContent = ready ? 'Ready' : 'Not downloaded';
+    orgReady.dataset.ready = ready ? 'yes' : 'no';
+    const busy = st.state === 'loading' && st.progress !== null && !ready;
+    orgDownload.textContent = busy ? 'Downloading…' : ready ? 'Downloaded' : `Download (${model.size.replace('about ', '')})`;
+    orgDownload.disabled = !deviceOk || ready || busy;
+    orgDelete.disabled = !ready;
+    const showBar = st.state === 'loading' && typeof st.progress === 'number';
+    orgProgress.classList.toggle('on', showBar);
+    orgProgress.firstElementChild.style.width = `${Math.round((st.progress || 0) * 100)}%`;
+    orgStatus.textContent = st.state === 'idle' && !st.text ? '' : st.text || '';
+    orgStatus.classList.toggle('error', st.state === 'error');
+    orgQueue.textContent = st.queue ? `${st.queue} note${st.queue === 1 ? '' : 's'} waiting to be organized` : '';
+  }
+
+  llm.checkSupport().then((sup) => {
+    deviceOk = sup.ok;
+    orgSupport.textContent = sup.ok
+      ? `WebGPU ready${sup.f16 ? ' · fast half-precision' : ' · full-precision fallback'}${sup.deviceMemoryGB ? ` · ${sup.deviceMemoryGB} GB+ RAM` : ''}`
+      : sup.reason;
+    paintOrganizer();
+  });
+  const unsubOrg = organizer.onStatus(paintOrganizer);
+  const prevCleanup = cleanupView;
+  cleanupView = () => {
+    prevCleanup();
+    unsubOrg();
+  };
+
+  document.getElementById('org-auto').addEventListener('change', async (e) => {
+    await organizer.setAuto(e.target.checked);
+  });
+  document.getElementById('org-model').addEventListener('click', async (e) => {
+    const key = e.target.dataset.model;
+    if (!key || key === organizer.modelKey()) return;
+    await organizer.setModelKey(key);
+    render();
+  });
+  orgDownload.addEventListener('click', async () => {
+    const model = llm.MODELS[organizer.modelKey()];
+    if (!confirm(`Download ${model.label} (${model.size})? Use Wi-Fi and keep Palate open until it finishes.`)) return;
+    let wakeLock = null;
+    try {
+      wakeLock = await navigator.wakeLock?.request('screen');
+    } catch { /* not supported */ }
+    try {
+      await organizer.downloadModel();
+      showToast('Model ready');
+    } catch {
+      showToast('Download failed');
+    } finally {
+      wakeLock?.release?.();
+    }
+  });
+  orgDelete.addEventListener('click', async () => {
+    if (!confirm('Remove the downloaded model from this phone?')) return;
+    await organizer.deleteModel();
+    paintOrganizer();
+  });
+  document.getElementById('org-all').addEventListener('click', async () => {
+    const n = await organizer.enqueueAll();
+    showToast(n ? `Organizing ${plural(n, 'note')}` : 'Everything is already organized');
+  });
 
   // Keyboard
   document.getElementById('kb-mode').addEventListener('click', async (e) => {
@@ -1140,6 +1357,7 @@ async function boot() {
 
   render();
   sync.start();
+  organizer.start();
 
   // Heavier work after first paint
   lang.loadDictionary().then(() => keys.refresh()).catch((err) => console.warn('[keys] dictionary', err));
