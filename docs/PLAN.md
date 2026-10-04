@@ -74,6 +74,25 @@ Settings, sent as a Bearer token and compared in constant time.
 - Setting: Palate keyboard Auto / Always / Off. Off is the escape hatch
   back to the iOS keyboard.
 
+### Auto-organize (on-device)
+- On Archive, a background queue runs each note through a local model
+  (WebLLM on WebGPU in a worker; Qwen 2.5 3B, or 1.5B lite). The model returns
+  JSON constrained by a schema: title, project, new-project suggestion, tags,
+  to-dos, and the cleaned text.
+- `planChanges()` applies the result defensively:
+  - a cleanup is accepted only if it keeps the user's words (word-level LCS
+    similarity ≥ 0.72);
+  - tags become a trailing `#tag` line and to-dos a `- [ ]` checklist, so they
+    sync and export as plain text;
+  - a project is set only for notes archived without one, from the model's pick
+    or a vote among similar notes.
+- Safety:
+  - the original is kept as a version snapshot plus an undo record;
+  - a note open in the editor is never touched;
+  - a crash marker turns the model off if iOS kills the app (out of memory)
+    mid-run.
+- Without the model, rule-based tidy-up and to-do extraction run instead.
+
 ## Phases (each lands as its own commit)
 1. Data layer + migration + Vercel API + sync engine + Settings.
 2. Palate Keys keyboard + autocorrect.
