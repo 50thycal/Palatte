@@ -97,3 +97,14 @@ test('parseResult normalises model JSON', () => {
   const r = parseResult('{"title":"T","project":"Work","new_project":"","tags":["a",3],"todos":[],"cleaned":"x"}');
   assert.deepEqual(r, { title: 'T', project: 'Work', newProject: '', tags: ['a'], todos: [], cleaned: 'x' });
 });
+
+test('progress messages map to download vs GPU-load stages', async () => {
+  const { phaseOf, MODELS, MODEL_ORDER } = await import('../js/organize/llm.js');
+  assert.equal(phaseOf('Fetching param cache[3/40]: 210MB fetched. 8% completed'), 'download');
+  assert.equal(phaseOf('Loading model from cache[12/40]: 900MB loaded. 30% completed'), 'load');
+  assert.equal(phaseOf('Finish loading on Apple GPU'), 'load');
+  assert.equal(phaseOf(''), null);
+  // Step-down order goes from largest to smallest memory footprint
+  const mem = MODEL_ORDER.map((k) => MODELS[k].memoryMB);
+  assert.deepEqual([...mem].sort((a, b) => b - a), mem);
+});

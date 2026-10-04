@@ -9,6 +9,7 @@
 export const MODELS = {
   standard: {
     key: 'standard',
+    short: 'Standard 3B',
     label: 'Qwen 2.5 3B',
     f16: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
     f32: 'Qwen2.5-3B-Instruct-q4f32_1-MLC',
@@ -17,13 +18,37 @@ export const MODELS = {
   },
   lite: {
     key: 'lite',
-    label: 'Qwen 2.5 1.5B (lite)',
+    short: 'Lite 1.5B',
+    label: 'Qwen 2.5 1.5B',
     f16: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
     f32: 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC',
     size: 'about 0.9 GB',
     memoryMB: 1630
+  },
+  tiny: {
+    key: 'tiny',
+    short: 'Tiny 1B',
+    label: 'Llama 3.2 1B',
+    f16: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+    f32: 'Llama-3.2-1B-Instruct-q4f32_1-MLC',
+    size: 'about 0.7 GB',
+    memoryMB: 880
   }
 };
+
+// Largest to smallest: where to step down after a memory crash
+export const MODEL_ORDER = ['standard', 'lite', 'tiny'];
+
+/**
+ * Which stage a WebLLM progress message belongs to. Download progress
+ * survives interruptions (finished shards stay cached); a crash while
+ * loading onto the GPU or generating means the model is too big.
+ */
+export function phaseOf(text) {
+  if (/fetching param cache|downloading|fetch/i.test(text || '')) return 'download';
+  if (/loading model from cache|finish loading|shader|compil|loading/i.test(text || '')) return 'load';
+  return null;
+}
 
 const LIB_URL = '/vendor/web-llm/index.js';
 const WORKER_URL = '/js/organize/llm-worker.js';

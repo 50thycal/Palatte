@@ -968,8 +968,9 @@ function renderSettingsView() {
             </div>
             <div class="muted small" id="org-support">Checking this device…</div>
             <div class="segmented" id="org-model">
-              ${Object.values(llm.MODELS).map((m) => `<button data-model="${m.key}" class="${organizer.modelKey() === m.key ? 'seg-on' : ''}">${m.key === 'standard' ? 'Standard 3B' : 'Lite 1.5B'}</button>`).join('')}
+              ${Object.values(llm.MODELS).map((m) => `<button data-model="${m.key}" class="${organizer.modelKey() === m.key ? 'seg-on' : ''}">${m.short}</button>`).join('')}
             </div>
+            <div class="muted small" id="org-model-info"></div>
             <div class="org-progress" id="org-progress"><div></div></div>
             <div class="muted small" id="org-status"></div>
             <div class="row-buttons">
@@ -1101,8 +1102,13 @@ function renderSettingsView() {
     const showBar = st.state === 'loading' && typeof st.progress === 'number';
     orgProgress.classList.toggle('on', showBar);
     orgProgress.firstElementChild.style.width = `${Math.round((st.progress || 0) * 100)}%`;
-    orgStatus.textContent = st.state === 'idle' && !st.text ? '' : st.text || '';
-    orgStatus.classList.toggle('error', st.state === 'error');
+    document.getElementById('org-model-info').textContent =
+      `${model.label}: ${model.size} download, needs about ${(model.memoryMB / 1024).toFixed(1)} GB of GPU memory.`;
+    // The last problem survives restarts, so it stays visible until fixed
+    const issue = !ready && organizer.lastIssue();
+    const text = st.text || (issue ? issue.text : '');
+    orgStatus.textContent = text;
+    orgStatus.classList.toggle('error', st.state === 'error' || (!st.text && Boolean(issue)));
     orgQueue.textContent = st.queue ? `${st.queue} note${st.queue === 1 ? '' : 's'} waiting to be organized` : '';
   }
 
