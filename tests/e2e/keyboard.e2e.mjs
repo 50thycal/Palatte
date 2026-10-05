@@ -100,6 +100,48 @@ await page.locator('.pk-pred').nth(i).tap();
 await tap('.');
 assert.equal(await value(), "Teh quick. I don't know see you tomorrow. ", 'prediction + smart punctuation');
 
+// Swipe down on a letter cycles the case of the current word
+const setText = (t) => page.$eval('#palate-input', (el, t) => {
+  el.value = t;
+  el.setSelectionRange(t.length, t.length);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}, t);
+await setText('call john');
+await drag('g', 0, 40, 30);
+assert.equal(await value(), 'call John', 'swipe down capitalizes the word');
+await drag('h', 0, 40, 31);
+assert.equal(await value(), 'call JOHN', 'again: all caps');
+await drag('h', 0, 40, 32);
+assert.equal(await value(), 'call john', 'again: back to lowercase');
+await setText('meet sarah ');
+await drag('g', 0, 40, 33);
+assert.equal(await value(), 'meet Sarah ', 'works right after the space');
+assert.equal(await caret(), 'meet Sarah '.length, 'caret stays put');
+await setText('ok ');
+await page.$eval('#palate-input', (el) => el.setSelectionRange(el.value.length, el.value.length));
+await setText('');
+await drag('g', 0, 40, 34);
+await tap('b');
+assert.equal(await value(), 'B', 'no word yet: next letter is capitalized');
+
+// Caps lock: double-tap shift lights the indicator and types capitals
+await setText('x ');
+const shift = await page.evaluate(() => {
+  const r = document.querySelector('.pk-key-shift').getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+});
+await page.touchscreen.tap(shift.x, shift.y);
+await page.waitForTimeout(60);
+await page.touchscreen.tap(shift.x, shift.y);
+await page.waitForTimeout(60);
+assert.ok(await page.$eval('.pk-key-shift', (el) => el.classList.contains('pk-shift-lock')), 'caps lock indicator on');
+await type('abc');
+assert.equal(await value(), 'x ABC', 'caps lock stays on across letters');
+if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/capslock.png` });
+await page.touchscreen.tap(shift.x, shift.y);
+await page.waitForTimeout(60);
+assert.ok(!(await page.$eval('.pk-key-shift', (el) => el.classList.contains('pk-shift-lock'))), 'indicator off after tapping shift');
+
 // iOS quirk: after focusing a field iOS may scroll the page, so touches on a
 // fixed keyboard report coordinates shifted from what's drawn. The browser's
 // own target is still the key under the finger; that must win.

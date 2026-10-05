@@ -17,6 +17,7 @@ const REPEAT_CHAR_MS = 80;
 const REPEAT_WORD_MS = 190;
 const REPEAT_WORD_AFTER = 12;
 const SWIPE_UP_PX = 22;
+const SWIPE_DOWN_PX = 22;
 const TRACKPAD_START_PX = 10;
 const TRACKPAD_CHAR_PX = 9;
 const TRACKPAD_LINE_PX = 26;
@@ -317,7 +318,7 @@ function renderKeys() {
     });
     s.rowsEl.appendChild(rowEl);
   });
-  s.rowsEl.classList.toggle('pk-shifted', s.shift !== 'off');
+  paintShift();
   if (s.visible) requestAnimationFrame(measure);
 }
 
@@ -523,6 +524,22 @@ function onMove(e) {
     return;
   }
 
+  // Swipe down on a letter: change the case of the current word
+  if (isLetterKey(t.key) && dy > SWIPE_DOWN_PX && dy > Math.abs(dx)) {
+    if (t.mode !== 'case') {
+      t.mode = 'case';
+      clearTimers(t);
+      haptics.tick();
+      showPopup(t.key, casePreview(), true, true);
+    }
+    return;
+  }
+
+  if (t.mode === 'case' && dy < SWIPE_DOWN_PX / 2) {
+    t.mode = 'tap';
+    showPopup(t.key, displayChar(t.key.def.k));
+  }
+
   if (t.key.def.alt && dy < -SWIPE_UP_PX && Math.abs(dy) > Math.abs(dx)) {
     if (t.mode !== 'alt') {
       t.mode = 'alt';
@@ -598,7 +615,8 @@ function commit(t) {
   const def = t.key.def;
 
   if (!def.action) {
-    if (t.mode === 'alt') typeChar(def.alt);
+    if (t.mode === 'case') cycleWordCase();
+    else if (t.mode === 'alt') typeChar(def.alt);
     else if (t.mode === 'accent') {
       const opts = accentOptions(def.k);
       typeChar(opts[t.accent] || def.k);
@@ -635,13 +653,13 @@ function press(key, on) {
   key.el.classList.toggle('pk-key-down', on);
 }
 
-function showPopup(key, text, alt = false) {
+function showPopup(key, text, alt = false, wide = false) {
   if (key.def.action || !key.rect) return;
   const r = key.rect;
   const rootRect = s.root.getBoundingClientRect();
-  s.popupEl.className = 'pk-popup pk-popup-on' + (alt ? ' pk-popup-alt' : '');
+  s.popupEl.className = 'pk-popup pk-popup-on' + (alt ? ' pk-popup-alt' : '') + (wide ? ' pk-popup-wide' : '');
   s.popupEl.textContent = text;
-  s.popupEl.style.width = `${Math.max(r.width + 16, 44)}px`;
+  s.popupEl.style.width = wide ? 'auto' : `${Math.max(r.width + 16, 44)}px`;
   s.popupEl.style.left = `${r.left - rootRect.left + r.width / 2}px`;
   s.popupEl.style.top = `${r.top - rootRect.top}px`;
 }
@@ -832,10 +850,7 @@ function afterEdit() {
   s.shiftManual = false;
   if (s.shift === 'once') s.shift = 'off';
   updateAutoShift();
-  if (s.shift !== prev) {
-    s.rowsEl.classList.toggle('pk-shifted', s.shift !== 'off');
-    refreshLabels();
-  }
+  if (s.shift !== prev) paintShift();
   schedulePredictions();
 }
 
@@ -980,12 +995,96 @@ function startRepeat(t) {
 
 function toggleShift() {
   const now = Date.now();
-  if (now - s.lastShiftTap < DOUBLE_SHIFT_MS) s.shift = 'lock';
-  else s.shift = s.shift === 'off' ? 'once' : 'off';
+  if (now - s.lastShiftTap < DOUBLE_SHIFT_MS) {
+    s.shift = 'lock';
+    setTimeout(() => haptics.tick(), 70); // second tick confirms caps lock
+  } else {
+    s.shift = s.shift === 'off' ? 'once' : 'off';
+  }
   s.lastShiftTap = now;
   s.shiftManual = true;
+  paintShift();
+}
+
+/**
+ * Reflect shift state on the keys: uppercase labels, a filled arrow for
+ * one-shot shift, and a lit indicator + highlighted key for caps lock
+ */
+function paintShift() {
   s.rowsEl.classList.toggle('pk-shifted', s.shift !== 'off');
+  s.rowsEl.classList.toggle('pk-capslock', s.shift === 'lock');
+  for (const k of s.keys) {
+    if (k.def.action !== 'shift') continue;
+    k.el.classList.toggle('pk-shift-once', s.shift === 'once');
+    k.el.classList.toggle('pk-shift-lock', s.shift === 'lock');
+  }
   refreshLabels();
+}
+
+// ============================================
+// Word case (swipe down on a letter)
+// ============================================
+
+function nextCase(word) {
+  const lower = word.toLowerCase();
+  const upper = word.toUpperCase();
+  if (word === lower) return lower[0].toUpperCase() + lower.slice(1); // john -> John
+  if (word !== upper && word.length > 1) return upper;                // John -> JOHN
+  return lower;                                                        // JOHN -> john
+}
+
+/**
+ * The word the caret is in or just after (one trailing space allowed, so a
+ * word can be fixed right after finishing it). Returns null if none.
+ */
+function wordAtCaret() {
+  const el = s.target;
+  if (!el) return null;
+  const v = el.value;
+  if (el.selectionStart !== el.selectionEnd) {
+    return { start: el.selectionStart, end: el.selectionEnd, text: v.slice(el.selectionStart, el.selectionEnd) };
+  }
+  const isWordChar = (ch) => /[A-Za-z'’]/.test(ch || '');
+  let pos = el.selectionStart;
+  // "john |" -> still means john, so a word can be fixed right after the space
+  if (!isWordChar(v[pos]) && v[pos - 1] === ' ' && isWordChar(v[pos - 2])) pos--;
+  let start = pos;
+  while (start > 0 && isWordChar(v[start - 1])) start--;
+  let end = pos;
+  while (end < v.length && isWordChar(v[end])) end++;
+  const text = v.slice(start, end);
+  return /[A-Za-z]/.test(text) ? { start, end, text } : null;
+}
+
+function casePreview() {
+  const w = wordAtCaret();
+  if (!w) return '⇧ Aa';
+  const next = w.text.replace(/[A-Za-z][A-Za-z'’]*/g, (m) => nextCase(m));
+  return next.length > 14 ? next.slice(0, 13) + '…' : next;
+}
+
+function cycleWordCase() {
+  const el = s.target;
+  if (!el) return;
+  const w = wordAtCaret();
+  if (!w) {
+    // Nothing to change yet: capitalize the next letter instead
+    s.shift = 'once';
+    s.shiftManual = true;
+    paintShift();
+    return;
+  }
+  const hadSelection = el.selectionStart !== el.selectionEnd;
+  const caret = el.selectionEnd;
+  const next = w.text.replace(/[A-Za-z][A-Za-z'’]*/g, (m) => nextCase(m));
+  if (next === w.text) return;
+  replaceRange(w.start, w.end, next);
+  if (hadSelection) el.setSelectionRange(w.start, w.start + next.length);
+  else setCaret(caret);
+  s.expectedCaret = el.selectionStart;
+  s.revert = null;
+  s.autoSpace = false;
+  schedulePredictions();
 }
 
 function setLayer(layer) {
@@ -998,8 +1097,7 @@ function updateAutoShift() {
   const next = isSentenceStart(textBeforeCaret()) ? 'once' : 'off';
   if (next !== s.shift) {
     s.shift = next;
-    s.rowsEl.classList.toggle('pk-shifted', s.shift !== 'off');
-    refreshLabels();
+    paintShift();
   }
 }
 

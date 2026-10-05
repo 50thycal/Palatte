@@ -993,7 +993,7 @@ function renderSettingsView() {
           <label class="toggle-row"><span>Key haptics</span><input type="checkbox" id="kb-haptics" ${hapticsOn ? 'checked' : ''}></label>
           <label class="toggle-row"><span>Touch debug overlay</span><input type="checkbox" id="kb-debug" ${touchDebug ? 'checked' : ''}></label>
           <div class="toggle-row"><span>Learned words: ${learned.length}</span>${learned.length ? '<button class="link-btn" id="clear-learned">Clear</button>' : ''}</div>
-          <p class="settings-hint">Tips: drag along the space bar to move the cursor · swipe left on ⌫ to delete words · swipe up on a key for its number or symbol · hold a key for accents · backspace right after an autocorrect undoes it and learns the word.</p>
+          <p class="settings-hint">Tips: drag along the space bar to move the cursor · swipe left on ⌫ to delete words · swipe up on a key for its number or symbol · swipe down on a letter to capitalize the word (again for ALL CAPS) · double-tap ⇧ for caps lock · hold a key for accents · backspace right after an autocorrect undoes it and learns the word.</p>
         </section>
 
         <section class="settings-section">
