@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palate-v16';
+const CACHE_NAME = 'palate-v17';
 const ASSETS = [
   '/',
   '/index.html',
@@ -40,7 +40,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      // Only this app's own old versions: the on-device model lives in
+      // caches named webllm/* (gigabytes) and must survive app updates
+      Promise.all(keys.filter((key) => key.startsWith('palate-v') && key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
