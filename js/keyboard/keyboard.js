@@ -15,6 +15,7 @@ import * as clips from './clips.js';
 import * as shortcuts from './shortcuts.js';
 
 const LONG_PRESS_MS = 380;
+const BAR_DRAG_PX = 8;          // finger travel before a bar touch becomes a scroll
 const REPEAT_DELAY_MS = 420;
 const REPEAT_CHAR_MS = 80;
 const REPEAT_WORD_MS = 190;
@@ -239,8 +240,24 @@ function build() {
   let barDown = null;
   let barLongTimer = 0;
   let barLongFired = false;
+  // Native scrolling is off (touchstart is cancelled), so drag-scroll the
+  // chip row sideways and the clipboard list up/down by hand
+  let barDrag = null;
   s.barEl.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    const scroller = e.target.closest('.pk-preds, .pk-clips');
+    barDrag = scroller && {
+      el: scroller,
+      vertical: scroller.classList.contains('pk-clips'),
+      x: e.clientX,
+      y: e.clientY,
+      left: scroller.scrollLeft,
+      top: scroller.scrollTop,
+      moved: false
+    };
+    if (barDrag) {
+      try { s.barEl.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    }
     barDown = e.target.closest('button');
     barDown?.classList.add('pk-bar-down');
     barLongFired = false;
@@ -254,15 +271,33 @@ function build() {
       }, LONG_PRESS_MS + 120);
     }
   });
+  s.barEl.addEventListener('pointermove', (e) => {
+    if (!barDrag) return;
+    const dx = e.clientX - barDrag.x;
+    const dy = e.clientY - barDrag.y;
+    if (!barDrag.moved && Math.abs(barDrag.vertical ? dy : dx) < BAR_DRAG_PX) return;
+    if (!barDrag.moved) {
+      // It's a scroll, not a press
+      barDrag.moved = true;
+      clearTimeout(barLongTimer);
+      barDown?.classList.remove('pk-bar-down');
+    }
+    if (barDrag.vertical) barDrag.el.scrollTop = barDrag.top - dy;
+    else barDrag.el.scrollLeft = barDrag.left - dx;
+    paintScrollHint();
+  });
   s.barEl.addEventListener('pointerup', (e) => {
     clearTimeout(barLongTimer);
     const btn = barDown;
+    const dragged = barDrag?.moved;
     barDown = null;
+    barDrag = null;
     btn?.classList.remove('pk-bar-down');
-    if (barLongFired) return;
+    if (barLongFired || dragged) return;
     if (btn && btn === document.elementFromPoint(e.clientX, e.clientY)?.closest('button')) onBarPress(btn);
   });
   s.barEl.addEventListener('pointercancel', () => {
+    barDrag = null;
     clearTimeout(barLongTimer);
     barDown?.classList.remove('pk-bar-down');
     barDown = null;
@@ -1333,6 +1368,7 @@ function renderBar() {
   selectBtn.classList.toggle('pk-on', s.select.on);
   selectBtn.setAttribute('aria-label', s.select.on ? 'Done selecting' : 'Select text');
   renderSelectionPreview();
+  if (!s.select.on) paintScrollHint();
 
   if (s.barNote) {
     preds.innerHTML = `<span class="pk-bar-note">${escapeHtml(s.barNote)}</span>`;
@@ -1348,6 +1384,8 @@ function renderBar() {
     actionBtn.style.visibility = 'visible';
     actionBtn.disabled = true;
     actionBtn.classList.add('pk-action-info');
+    preds.scrollLeft = 0;
+    paintScrollHint();
     return;
   } else {
     preds.innerHTML = [0, 1, 2].map((i) => {
@@ -1361,6 +1399,14 @@ function renderBar() {
   actionBtn.classList.remove('pk-action-info');
   actionBtn.textContent = s.action?.label || '';
   actionBtn.style.visibility = s.action ? 'visible' : 'hidden';
+}
+
+// Fade the edge(s) of the chip row that have more chips beyond them
+function paintScrollHint() {
+  const preds = s.barEl.querySelector('.pk-preds');
+  const more = s.select.on && preds.scrollWidth > preds.clientWidth + 1;
+  preds.classList.toggle('pk-more-right', more && preds.scrollLeft + preds.clientWidth < preds.scrollWidth - 1);
+  preds.classList.toggle('pk-more-left', more && preds.scrollLeft > 1);
 }
 
 function selectionLabel() {
@@ -1688,6 +1734,7 @@ function openClips() {
   panel.hidden = false;
   s.clipsOpen = true;
   renderSelectionPreview();
+  if (!s.select.on) paintScrollHint();
 }
 
 function closeClips() {

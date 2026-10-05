@@ -198,6 +198,40 @@ assert.equal(await page.$eval('.pk-action', (el) => el.textContent), '9 words');
 assert.equal(await page.$eval('.pk-sel-preview', (el) => el.hidden ? null : el.textContent), '“We need to investigate why models are not downl…”');
 await page.locator('.pk-select').tap();
 
+// ---------- Chip row drag-scrolls (native scroll is off on the keyboard) ----------
+{
+  await page.setViewportSize({ width: 360, height: 780 }); // narrow phone: chips overflow
+  await setText('scroll the chips', 3);
+  await page.locator('.pk-select').tap();
+  const m = await page.$eval('.pk-preds', (el) => ({ sw: el.scrollWidth, cw: el.clientWidth, right: el.classList.contains('pk-more-right') }));
+  assert.ok(m.sw > m.cw, `chips overflow at 360px (${m.sw} > ${m.cw})`);
+  assert.ok(m.right, 'right edge fades to show there is more');
+  // Drag left starting on the Word chip: scrolls, and does NOT press Word
+  await page.evaluate(() => {
+    const preds = document.querySelector('.pk-preds');
+    const chip = preds.querySelector('[data-cmd="word"]').getBoundingClientRect();
+    const bar = document.querySelector('.pk-bar');
+    const o = (x) => ({ pointerId: 91, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: x, clientY: chip.top + chip.height / 2 });
+    const x0 = chip.left + chip.width / 2;
+    preds.querySelector('[data-cmd="word"]').dispatchEvent(new PointerEvent('pointerdown', o(x0)));
+    for (let i = 1; i <= 10; i++) bar.dispatchEvent(new PointerEvent('pointermove', o(x0 - i * 25)));
+    bar.dispatchEvent(new PointerEvent('pointerup', o(x0 - 250)));
+  });
+  const after = await page.$eval('.pk-preds', (el) => ({ left: el.scrollLeft, max: el.scrollWidth - el.clientWidth, leftFade: el.classList.contains('pk-more-left') }));
+  assert.ok(after.left > 0 && after.left <= after.max, `chip row scrolled (${after.left}/${after.max})`);
+  assert.ok(after.leftFade, 'left edge fades once scrolled');
+  assert.equal(await selection(), '', 'dragging did not press the chip under the finger');
+  // The last chip is now fully on screen and tappable by hand
+  const vis = await page.evaluate(() => {
+    const preds = document.querySelector('.pk-preds').getBoundingClientRect();
+    const all = document.querySelector('[data-cmd="all"]').getBoundingClientRect();
+    return all.right <= preds.right + 1 && all.left >= preds.left - 1;
+  });
+  assert.ok(vis, 'All chip fully visible after scrolling');
+  await page.locator('.pk-select').tap();
+  await page.setViewportSize(playwright.devices['iPhone 13'].viewport);
+}
+
 // ---------- Styles actually apply ----------
 // (behaviour tests can't see a broken stylesheet; an unclosed rule once
 // left every keyboard style after it dead on the phone)
