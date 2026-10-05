@@ -10,6 +10,9 @@
 import { LAYOUTS, ACCENTS } from './layouts.js';
 import * as lang from './language.js';
 import * as haptics from './haptics.js';
+import * as aim from './aim.js';
+import * as clips from './clips.js';
+import * as shortcuts from './shortcuts.js';
 
 const LONG_PRESS_MS = 380;
 const REPEAT_DELAY_MS = 420;
@@ -53,6 +56,12 @@ const s = {
   predFrame: 0,
   expectedCaret: -1,
   offset: { x: 0, y: 0 },  // learned touch-vs-layout correction (iOS)
+  select: { on: false, anchor: 0, focus: 0 },
+  pasteHintUntil: 0,       // show a Paste chip briefly after cut/copy
+  barNote: '',             // transient message in the bar ("Copied")
+  clipsOpen: false,
+  lastTap: null,           // { x, y, key, at } for aim learning
+  missTap: null,           // a tap that was immediately backspaced
   debug: false,
   debugEl: null,
   onLearn: () => {},
@@ -127,6 +136,22 @@ export function setHaptics(on) {
   haptics.setEnabled(on);
 }
 
+export function aimStats() {
+  return aim.stats();
+}
+
+export function resetAim() {
+  aim.reset();
+}
+
+export function setShortcuts(list) {
+  shortcuts.setShortcuts(list);
+}
+
+export function clearClips() {
+  clips.clear();
+}
+
 export function isEnabled() {
   return s.enabled;
 }
@@ -185,8 +210,12 @@ function build() {
       <button class="pk-bar-btn pk-hide" data-bar="hide" aria-label="Hide keyboard">
         <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <button class="pk-bar-btn pk-select" data-bar="select" aria-label="Select text">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M9 4h6M9 20h6M12 4v16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 8v8M19 8v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2 2.5"/></svg>
+      </button>
       <div class="pk-preds"></div>
       <button class="pk-bar-btn pk-action" data-bar="action"></button>
+      <div class="pk-clips" hidden></div>
     </div>
     <div class="pk-rows"></div>
     <div class="pk-popup"></div>
@@ -207,18 +236,33 @@ function build() {
   s.rowsEl.addEventListener('pointercancel', onCancel);
   // touchstart is cancelled (to keep focus), so clicks never fire: use pointers
   let barDown = null;
+  let barLongTimer = 0;
+  let barLongFired = false;
   s.barEl.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     barDown = e.target.closest('button');
     barDown?.classList.add('pk-bar-down');
+    barLongFired = false;
+    clearTimeout(barLongTimer);
+    if (barDown?.dataset.long) {
+      const btn = barDown;
+      barLongTimer = setTimeout(() => {
+        barLongFired = true;
+        haptics.tick();
+        onBarLongPress(btn);
+      }, LONG_PRESS_MS + 120);
+    }
   });
   s.barEl.addEventListener('pointerup', (e) => {
+    clearTimeout(barLongTimer);
     const btn = barDown;
     barDown = null;
     btn?.classList.remove('pk-bar-down');
+    if (barLongFired) return;
     if (btn && btn === document.elementFromPoint(e.clientX, e.clientY)?.closest('button')) onBarPress(btn);
   });
   s.barEl.addEventListener('pointercancel', () => {
+    clearTimeout(barLongTimer);
     barDown?.classList.remove('pk-bar-down');
     barDown = null;
   });
@@ -235,6 +279,10 @@ function build() {
 }
 
 function show(target) {
+  if (s.target !== target) {
+    s.select.on = false;
+    closeClips();
+  }
   s.target = target;
   if (!s.visible) {
     s.visible = true;
@@ -253,6 +301,8 @@ function hide() {
   if (!s.visible) return;
   s.visible = false;
   s.target = null;
+  s.select.on = false;
+  closeClips();
   s.root.classList.remove('pk-visible', 'pk-trackpad');
   document.documentElement.classList.remove('pk-open');
   document.documentElement.style.setProperty('--kb-h', '0px');
@@ -388,28 +438,31 @@ function hitTest(x, y, preferred = null) {
   }
   if (!isLetterKey(best) || s.layer !== 'letters') return best;
 
-  const r = best.rect;
-  const w = r.width;
-  const h = r.height;
-  const nx = (x - (r.left + w / 2)) / w;
-  const ny = (y - (r.top + h / 2)) / h;
-  if (Math.abs(nx) < 0.28 && Math.abs(ny) < 0.28) return best; // clearly inside
-
   const prefix = currentWordBefore();
-  if (prefix === null) return best;
-  const probs = lang.nextLetterProbs(prefix.toLowerCase());
-  if (!probs.size) return best;
+  const probs = prefix === null ? null : lang.nextLetterProbs(prefix.toLowerCase());
+  const useProbs = Boolean(probs && probs.size);
+  if (!useProbs && !aim.ready()) return best;
+
+  // Distances are measured to each key's learned centre (where this person
+  // actually taps it), falling back to the drawn centre until learned
+  const centre = (key) => {
+    const o = aim.offset(key.def.k);
+    const kr = key.rect;
+    return { x: kr.left + kr.width * (0.5 + o.dx), y: kr.top + kr.height * (0.5 + o.dy), w: kr.width, h: kr.height };
+  };
+  const c = centre(best);
+  if (Math.abs((x - c.x) / c.w) < 0.28 && Math.abs((y - c.y) / c.h) < 0.28) return best; // clearly inside
 
   let choice = best;
   let bestCost = Infinity;
   for (const key of s.keys) {
     if (!isLetterKey(key) || !key.rect) continue;
-    const kr = key.rect;
-    const dx = (x - (kr.left + kr.width / 2)) / kr.width;
-    const dy = (y - (kr.top + kr.height / 2)) / kr.height;
+    const kc = centre(key);
+    const dx = (x - kc.x) / kc.w;
+    const dy = (y - kc.y) / kc.h;
     const dist = dx * dx + dy * dy;
     if (dist > 1.1) continue;
-    const cost = dist - 0.09 * Math.log((probs.get(key.def.k) || 0) + 0.01);
+    const cost = dist - (useProbs ? 0.09 * Math.log((probs.get(key.def.k) || 0) + 0.01) : 0);
     if (cost < bestCost) {
       bestCost = cost;
       choice = key;
@@ -425,6 +478,7 @@ function hitTest(x, y, preferred = null) {
 function onDown(e) {
   if (!s.target) return;
   e.preventDefault();
+  if (s.clipsOpen) closeClips();
 
   // Rollover typing: a new touch commits any letter still held down
   for (const t of [...s.touches.values()]) {
@@ -559,6 +613,7 @@ function onMove(e) {
     const key = hitTest(x, y);
     if (key && key !== t.key && !key.def.action) {
       press(t.key, false);
+      t.slid = true;
       t.key = key;
       press(key, true);
       showPopup(key, displayChar(key.def.k));
@@ -614,7 +669,14 @@ function commit(t) {
   hidePopup();
   const def = t.key.def;
 
+  // Typing anything (other than moving/case/shift) ends select mode;
+  // a selection is then replaced, like any text editor
+  if (s.select.on && !['space', 'shift', 'layer'].includes(def.action) && t.mode !== 'case') {
+    exitSelect(false);
+  }
+
   if (!def.action) {
+    if (t.mode === 'tap' && isLetterKey(t.key)) learnAim(t);
     if (t.mode === 'case') cycleWordCase();
     else if (t.mode === 'alt') typeChar(def.alt);
     else if (t.mode === 'accent') {
@@ -627,6 +689,7 @@ function commit(t) {
   switch (def.action) {
     case 'space':
       if (t.mode === 'trackpad') endTrackpad();
+      else if (s.select.on) exitSelect(true);
       else typeSpace();
       break;
     case 'shift':
@@ -705,12 +768,15 @@ function startTrackpad(t) {
   haptics.tick();
   s.root.classList.add('pk-trackpad');
   const el = s.target;
-  if (el) el.setSelectionRange(el.selectionEnd, el.selectionEnd);
+  if (!el) return;
+  if (s.select.on) syncSelectFromField();
+  else el.setSelectionRange(el.selectionEnd, el.selectionEnd);
 }
 
 function moveTrackpad(t, x, y) {
   const el = s.target;
   if (!el) return;
+  if (s.select.on) return moveSelection(t, x, y);
   const chars = Math.trunc((x - t.ax) / TRACKPAD_CHAR_PX);
   if (chars) {
     t.ax += chars * TRACKPAD_CHAR_PX;
@@ -869,7 +935,7 @@ function typeChar(ch) {
       afterEdit();
       return;
     }
-    applyAutocorrect(ch);
+    if (!applyShortcut()) applyAutocorrect(ch);
     insert(ch);
     if (s.revert) s.revert.caret = s.target.selectionStart;
   } else {
@@ -908,7 +974,7 @@ function typeSpace() {
     return;
   }
 
-  applyAutocorrect(' ');
+  if (!applyShortcut()) applyAutocorrect(' ');
   insert(' ');
   if (s.revert) s.revert.caret = s.target.selectionStart;
   if (s.layer !== 'letters') setLayer('letters');
@@ -924,7 +990,7 @@ function typeEnter() {
     el.dispatchEvent(new CustomEvent('pk-enter', { bubbles: true }));
     return;
   }
-  applyAutocorrect('\n');
+  if (!applyShortcut()) applyAutocorrect('\n');
   insert('\n');
   s.revert = null;
   s.lastKey = 'enter';
@@ -945,7 +1011,7 @@ function backspace() {
   if (isRevertable()) {
     // Undo the autocorrection and remember the word
     replaceRange(r.start, r.caret, r.original);
-    s.onLearn(r.original);
+    if (r.kind !== 'shortcut') s.onLearn(r.original);
     s.revert = null;
     s.autoSpace = false;
     afterEdit();
@@ -954,6 +1020,11 @@ function backspace() {
   s.revert = null;
   s.autoSpace = false;
   if (el.selectionStart === 0 && el.selectionEnd === 0) return;
+  // A letter deleted right after typing it may have been a miss: if the
+  // next letter differs, that touch point taught us where they meant it
+  const lt = s.lastTap;
+  s.missTap = lt && Date.now() - lt.at < 2000 && el.selectionStart === el.selectionEnd ? lt : null;
+  s.lastTap = null;
   deleteSelection();
   s.lastKey = 'backspace';
   afterEdit();
@@ -1030,12 +1101,20 @@ function paintShift() {
 // Word case (swipe down on a letter)
 // ============================================
 
-function nextCase(word) {
-  const lower = word.toLowerCase();
-  const upper = word.toUpperCase();
-  if (word === lower) return lower[0].toUpperCase() + lower.slice(1); // john -> John
-  if (word !== upper && word.length > 1) return upper;                // John -> JOHN
-  return lower;                                                        // JOHN -> john
+const WORD_RE = /[A-Za-z][A-Za-z'’]*/g;
+
+/**
+ * One step of lower -> Title -> UPPER -> lower, judged on the whole text so
+ * a multi-word selection moves together (not each word on its own cycle)
+ */
+function nextCase(text) {
+  const words = text.match(WORD_RE) || [];
+  if (!words.length) return text;
+  const allUpper = text === text.toUpperCase();
+  const allTitle = words.every((w) => w[0] === w[0].toUpperCase());
+  if (allUpper) return text.toLowerCase();                 // JOHN -> john
+  if (allTitle) return text.toUpperCase();                 // John -> JOHN
+  return text.replace(WORD_RE, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase()); // john -> John
 }
 
 /**
@@ -1064,7 +1143,7 @@ function wordAtCaret() {
 function casePreview() {
   const w = wordAtCaret();
   if (!w) return '⇧ Aa';
-  const next = w.text.replace(/[A-Za-z][A-Za-z'’]*/g, (m) => nextCase(m));
+  const next = nextCase(w.text);
   return next.length > 14 ? next.slice(0, 13) + '…' : next;
 }
 
@@ -1081,7 +1160,7 @@ function cycleWordCase() {
   }
   const hadSelection = el.selectionStart !== el.selectionEnd;
   const caret = el.selectionEnd;
-  const next = w.text.replace(/[A-Za-z][A-Za-z'’]*/g, (m) => nextCase(m));
+  const next = nextCase(w.text);
   if (next === w.text) return;
   replaceRange(w.start, w.end, next);
   if (hadSelection) el.setSelectionRange(w.start, w.start + next.length);
@@ -1133,6 +1212,10 @@ function applyAutocorrect(terminator) {
 function onSelectionChange() {
   const el = s.target;
   if (!el || document.activeElement !== el) return;
+  if (s.select.on) {
+    syncSelectFromField();
+    renderBar();
+  }
   if (el.selectionStart !== s.expectedCaret) {
     // The user moved the caret: drop context-sensitive state
     s.autoSpace = false;
@@ -1172,6 +1255,19 @@ async function computePredictions() {
   const context = /[.!?\n]\s*$/.test(head) ? [] : contextWords(head);
   const sentenceStart = isSentenceStart(head);
   let slots = [];
+
+  // A typed shortcut trigger previews its expansion in the centre slot
+  const token = (before.match(/\S+$/) || [''])[0];
+  const expansion = token && shortcuts.expand(token);
+  if (expansion) {
+    s.pending = null;
+    s.slots = [
+      { label: `“${token}”`, value: token, kind: 'literal' },
+      { label: `→ ${clips.preview(expansion, 24)}`, value: expansion, token, kind: 'shortcut', primary: true }
+    ];
+    renderBar();
+    return;
+  }
 
   try {
     if (partial) {
@@ -1216,6 +1312,13 @@ async function computePredictions() {
     console.error('[keys] prediction error', err);
   }
 
+  // Right after a cut/copy, offer Paste: first slot, or the last one when a
+  // half-typed word owns the first (e.g. the caret sits after the copied word)
+  const clip = clips.latest();
+  if (clip && Date.now() < s.pasteHintUntil) {
+    slots[partial ? 2 : 0] = { label: `Paste “${clips.preview(clip.text, 14)}”`, value: clip.text, kind: 'paste' };
+  }
+
   s.slots = slots;
   renderBar();
 }
@@ -1223,14 +1326,56 @@ async function computePredictions() {
 function renderBar() {
   if (!s.barEl) return;
   const preds = s.barEl.querySelector('.pk-preds');
-  preds.innerHTML = [0, 1, 2].map((i) => {
-    const slot = s.slots[i];
-    if (!slot) return '<button class="pk-pred pk-pred-empty" disabled></button>';
-    return `<button class="pk-pred${slot.primary ? ' pk-pred-primary' : ''}" data-slot="${i}">${escapeHtml(slot.label)}</button>`;
-  }).join('');
   const actionBtn = s.barEl.querySelector('.pk-action');
+  const selectBtn = s.barEl.querySelector('.pk-select');
+  s.barEl.classList.toggle('pk-bar-selecting', s.select.on);
+  selectBtn.classList.toggle('pk-on', s.select.on);
+  selectBtn.setAttribute('aria-label', s.select.on ? 'Done selecting' : 'Select text');
+
+  if (s.barNote) {
+    preds.innerHTML = `<span class="pk-bar-note">${escapeHtml(s.barNote)}</span>`;
+  } else if (s.select.on) {
+    const el = s.target;
+    const has = el && el.selectionStart !== el.selectionEnd;
+    const chip = (cmd, label, extra = '') => `<button class="pk-chip" data-cmd="${cmd}"${extra}>${label}</button>`;
+    const paste = chip('paste', 'Paste', ' data-long="1"');
+    preds.innerHTML = has
+      ? chip('cut', 'Cut') + chip('copy', 'Copy') + paste + chip('case', 'Aa')
+      : chip('word', 'Word') + chip('sentence', 'Sentence') + chip('paragraph', 'Para') + chip('all', 'All') + paste;
+    actionBtn.textContent = has ? selectionLabel() : 'drag ␣';
+    actionBtn.style.visibility = 'visible';
+    actionBtn.disabled = true;
+    actionBtn.classList.add('pk-action-info');
+    return;
+  } else {
+    preds.innerHTML = [0, 1, 2].map((i) => {
+      const slot = s.slots[i];
+      if (!slot) return '<button class="pk-pred pk-pred-empty" disabled></button>';
+      const long = slot.kind === 'paste' ? ' data-long="1"' : '';
+      return `<button class="pk-pred${slot.primary ? ' pk-pred-primary' : ''}${slot.kind === 'paste' ? ' pk-pred-paste' : ''}" data-slot="${i}"${long}>${escapeHtml(slot.label)}</button>`;
+    }).join('');
+  }
+  actionBtn.disabled = false;
+  actionBtn.classList.remove('pk-action-info');
   actionBtn.textContent = s.action?.label || '';
   actionBtn.style.visibility = s.action ? 'visible' : 'hidden';
+}
+
+function selectionLabel() {
+  const el = s.target;
+  const text = el.value.slice(el.selectionStart, el.selectionEnd);
+  const words = (text.match(/\S+/g) || []).length;
+  return words > 1 ? `${words} words` : `${text.length} char${text.length === 1 ? '' : 's'}`;
+}
+
+function flashNote(text) {
+  s.barNote = text;
+  renderBar();
+  setTimeout(() => {
+    s.barNote = '';
+    renderBar();
+    schedulePredictions();
+  }, 1100);
 }
 
 function onBarPress(btn) {
@@ -1244,13 +1389,44 @@ function onBarPress(btn) {
     s.action?.onTap?.();
     return;
   }
+  if (btn.dataset.bar === 'select') {
+    if (s.select.on) exitSelect(true);
+    else enterSelect();
+    return;
+  }
+  if (btn.dataset.clip !== undefined) {
+    pasteFromHistory(btn.dataset.clip);
+    return;
+  }
+  if (btn.dataset.cmd) {
+    runCommand(btn.dataset.cmd);
+    return;
+  }
   const slot = s.slots[Number(btn.dataset.slot)];
   if (slot) acceptSlot(slot);
+}
+
+function onBarLongPress(btn) {
+  // Hold Paste: pick from the clipboard history
+  if (btn.dataset.cmd === 'paste' || btn.dataset.slot !== undefined) openClips();
 }
 
 function acceptSlot(slot) {
   const el = s.target;
   if (!el) return;
+  if (slot.kind === 'paste') {
+    pasteText(slot.value);
+    return;
+  }
+  if (slot.kind === 'shortcut') {
+    const start = el.selectionStart - slot.token.length;
+    replaceRange(start, el.selectionStart, slot.value + ' ');
+    s.revert = null;
+    s.autoSpace = true;
+    s.lastKey = 'prediction';
+    afterEdit();
+    return;
+  }
   const partial = currentWordBefore() || '';
   const start = el.selectionStart - partial.length;
   const after = el.value[el.selectionStart];
@@ -1262,6 +1438,247 @@ function acceptSlot(slot) {
   s.autoSpace = true;
   s.lastKey = 'prediction';
   afterEdit();
+}
+
+// ============================================
+// Text shortcuts
+// ============================================
+
+/**
+ * Expand a shortcut trigger right before the caret (called as a space,
+ * punctuation or return is typed). Backspace right after undoes it.
+ */
+function applyShortcut() {
+  const el = s.target;
+  if (!el || el.selectionStart !== el.selectionEnd) return false;
+  const token = (textBeforeCaret().match(/\S+$/) || [''])[0];
+  const expansion = token && shortcuts.expand(token);
+  if (!expansion) return false;
+  const start = el.selectionStart - token.length;
+  replaceRange(start, el.selectionStart, expansion);
+  s.revert = { start, original: token, corrected: expansion, caret: -1, kind: 'shortcut' };
+  return true;
+}
+
+// ============================================
+// Learned aim
+// ============================================
+
+function learnAim(t) {
+  const r = t.key.rect;
+  if (!r) return;
+  const nx = (t.x0 - (r.left + r.width / 2)) / r.width;
+  const ny = (t.y0 - (r.top + r.height / 2)) / r.height;
+  const now = Date.now();
+  // Backspaced and retyped as a different letter: the old touch was meant
+  // for this key, which is the most useful sample there is
+  const miss = s.missTap;
+  if (miss && now - miss.at < 6000 && miss.key !== t.key.def.k) {
+    const mx = (miss.x - (r.left + r.width / 2)) / r.width;
+    const my = (miss.y - (r.top + r.height / 2)) / r.height;
+    if (Math.abs(mx) < 1.3 && Math.abs(my) < 1.3) aim.record(t.key.def.k, mx, my, 3);
+  }
+  s.missTap = null;
+  if (!t.slid && Math.abs(nx) < 0.75 && Math.abs(ny) < 0.75) aim.record(t.key.def.k, nx, ny);
+  s.lastTap = { x: t.x0, y: t.y0, key: t.key.def.k, at: now };
+}
+
+// ============================================
+// Select mode
+// ============================================
+
+function enterSelect() {
+  const el = s.target;
+  if (!el) return;
+  s.select.on = true;
+  if (el.selectionStart !== el.selectionEnd) {
+    s.select.anchor = el.selectionStart;
+    s.select.focus = el.selectionEnd;
+  } else {
+    s.select.anchor = s.select.focus = el.selectionStart;
+  }
+  s.clipsOpen = false;
+  closeClips();
+  renderBar();
+}
+
+function exitSelect(collapse) {
+  const el = s.target;
+  s.select.on = false;
+  closeClips();
+  if (collapse && el) setCaret(s.select.focus);
+  renderBar();
+  schedulePredictions();
+}
+
+function syncSelectFromField() {
+  const el = s.target;
+  if (!el) return;
+  const backward = el.selectionDirection === 'backward';
+  s.select.anchor = backward ? el.selectionEnd : el.selectionStart;
+  s.select.focus = backward ? el.selectionStart : el.selectionEnd;
+}
+
+function applySelection() {
+  const el = s.target;
+  const { anchor, focus } = s.select;
+  const start = Math.min(anchor, focus);
+  const end = Math.max(anchor, focus);
+  el.setSelectionRange(start, end, focus < anchor ? 'backward' : 'forward');
+  s.expectedCaret = el.selectionStart;
+  keepCaretVisible();
+  renderBar();
+}
+
+// Space-bar drag while selecting moves the selection's free end
+function moveSelection(t, x, y) {
+  const el = s.target;
+  const chars = Math.trunc((x - t.ax) / TRACKPAD_CHAR_PX);
+  if (chars) {
+    t.ax += chars * TRACKPAD_CHAR_PX;
+    s.select.focus = Math.max(0, Math.min(el.value.length, s.select.focus + chars));
+    applySelection();
+  }
+  const lines = Math.trunc((y - t.ay) / TRACKPAD_LINE_PX);
+  if (lines && el.tagName === 'TEXTAREA') {
+    t.ay += lines * TRACKPAD_LINE_PX;
+    s.select.focus = caretAfterLineMove(el.value, s.select.focus, lines);
+    applySelection();
+  }
+}
+
+function rangeAround(kind) {
+  const el = s.target;
+  const v = el.value;
+  const pos = s.select.focus;
+  if (kind === 'all') return [0, v.length];
+  if (kind === 'word') {
+    let a = pos;
+    let b = pos;
+    while (a > 0 && /[\w'’]/.test(v[a - 1])) a--;
+    while (b < v.length && /[\w'’]/.test(v[b])) b++;
+    if (a === b && a > 0) { // caret after a space: take the previous word
+      b = a;
+      while (b > 0 && /\s/.test(v[b - 1])) b--;
+      a = b;
+      while (a > 0 && /[\w'’]/.test(v[a - 1])) a--;
+    }
+    return [a, b];
+  }
+  if (kind === 'sentence') {
+    let a = pos;
+    while (a > 0 && !/[.!?\n]/.test(v[a - 1])) a--;
+    while (a < pos && /\s/.test(v[a])) a++;
+    let b = pos;
+    while (b < v.length && !/[.!?\n]/.test(v[b])) b++;
+    if (b < v.length && /[.!?]/.test(v[b])) b++;
+    return [a, b];
+  }
+  // paragraph: the current line (a list item or paragraph)
+  const a = v.lastIndexOf('\n', pos - 1) + 1;
+  let b = v.indexOf('\n', pos);
+  if (b === -1) b = v.length;
+  return [a, b];
+}
+
+function runCommand(cmd) {
+  const el = s.target;
+  if (!el) return;
+  if (['word', 'sentence', 'paragraph', 'all'].includes(cmd)) {
+    const [a, b] = rangeAround(cmd);
+    s.select.anchor = a;
+    s.select.focus = b;
+    applySelection();
+    return;
+  }
+  const text = el.value.slice(el.selectionStart, el.selectionEnd);
+  if (cmd === 'copy' && text) {
+    clips.push(text);
+    copyToSystem(text);
+    s.pasteHintUntil = Date.now() + 60000;
+    s.select.focus = el.selectionEnd;
+    exitSelect(true);
+    flashNote('Copied');
+  } else if (cmd === 'cut' && text) {
+    clips.push(text);
+    copyToSystem(text);
+    deleteSelection(); // native delete keeps it undoable with ↶
+    s.pasteHintUntil = Date.now() + 60000;
+    exitSelect(false);
+    afterEdit();
+    flashNote('Cut');
+  } else if (cmd === 'paste') {
+    const clip = clips.latest();
+    if (clip) pasteText(clip.text);
+    else pasteFromSystem();
+  } else if (cmd === 'case') {
+    cycleWordCase();
+    syncSelectFromField();
+    renderBar();
+  }
+}
+
+function copyToSystem(text) {
+  // The field's own selection makes execCommand('copy') reliable on iOS
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch { /* unsupported */ }
+  if (!ok && navigator.clipboard?.writeText) navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function pasteText(text) {
+  const wasSelecting = s.select.on;
+  if (wasSelecting) s.select.on = false;
+  closeClips();
+  insert(text);
+  s.revert = null;
+  s.autoSpace = false;
+  s.pasteHintUntil = 0;
+  afterEdit();
+  renderBar();
+}
+
+async function pasteFromSystem() {
+  if (!navigator.clipboard?.readText) {
+    flashNote('Nothing to paste');
+    return;
+  }
+  try {
+    // iOS shows its own "Paste" confirmation bubble here
+    const text = await navigator.clipboard.readText();
+    if (text) pasteText(text);
+    else flashNote('Clipboard is empty');
+  } catch {
+    flashNote('Paste not allowed');
+  }
+}
+
+function pasteFromHistory(which) {
+  if (which === 'system') {
+    closeClips();
+    pasteFromSystem();
+    return;
+  }
+  const clip = clips.list()[Number(which)];
+  if (clip) pasteText(clip.text);
+}
+
+function openClips() {
+  const panel = s.barEl.querySelector('.pk-clips');
+  const list = clips.list();
+  panel.innerHTML = `
+    <div class="pk-clips-title">Clipboard</div>
+    ${list.map((c, i) => `<button class="pk-clip" data-clip="${i}">${escapeHtml(clips.preview(c.text, 60))}</button>`).join('')}
+    <button class="pk-clip pk-clip-system" data-clip="system">Paste from iPhone clipboard…</button>`;
+  panel.hidden = false;
+  s.clipsOpen = true;
+}
+
+function closeClips() {
+  const panel = s.barEl?.querySelector('.pk-clips');
+  if (panel) panel.hidden = true;
+  s.clipsOpen = false;
 }
 
 function escapeHtml(text) {

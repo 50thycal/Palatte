@@ -1458,3 +1458,137 @@ html.pk-open .organize-banner { display: none; }
   padding: 0 14px;
   white-space: nowrap;
 }
+
+/* ============ Select mode / clipboard ============ */
+
+.pk-bar { position: relative; }
+
+.pk-select.pk-on {
+  background: #0a84ff;
+  color: #fff;
+}
+
+.pk-bar-selecting .pk-preds {
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 6px;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.pk-bar-selecting .pk-preds::-webkit-scrollbar { display: none; }
+
+.pk-chip {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 16px;
+  background: var(--kb-key);
+  color: var(--kb-text);
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: var(--kb-shadow);
+  cursor: pointer;
+}
+
+.pk-chip.pk-bar-down { background: var(--kb-key-down); }
+
+.pk-action-info {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.pk-bar-note {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kb-text);
+}
+
+.pk-pred-paste { color: #0a84ff; }
+
+.pk-clips {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: calc(100% + 6px);
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--kb-bg);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 3;
+}
+
+.pk-clips[hidden] { display: none; }
+
+.pk-clips-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--kb-text);
+  opacity: 0.6;
+  padding: 4px 6px;
+}
+
+.pk-clip {
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--kb-key);
+  color: var(--kb-text);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.pk-clip-system { color: #0a84ff; background: transparent; box-shadow: none; }
+
+/* Text shortcuts editor */
+.settings-sublabel {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+
+.shortcut-list { display: flex; flex-direction: column; }
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.shortcut-row code {
+  font: 13px ui-monospace, Menlo, monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--bg-sunken);
+}
+
+.shortcut-row span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.shortcut-add { margin-top: 10px; }

@@ -5,6 +5,7 @@ import * as morph from './morph.js';
 import * as predictor from './predictor.js';
 import * as keys from './keyboard/keyboard.js';
 import * as lang from './keyboard/language.js';
+import { DEFAULT_SHORTCUTS, validate as validateShortcut } from './keyboard/shortcuts.js';
 import { getTheme, applyTheme, toggleTheme } from './theme.js';
 import { buildMarkdownFiles } from './markdown.js';
 import { createZip } from './zip.js';
@@ -934,6 +935,8 @@ function renderSettingsView() {
   const hapticsOn = store.getKV('haptics', true);
   const touchDebug = store.getKV('touchDebug', false);
   const learned = store.getKV('learnedWords', []);
+  const aim = keys.aimStats();
+  const shortcutList = store.getKV('shortcuts', DEFAULT_SHORTCUTS);
   const trash = store.listNotes({ onlyDeleted: true }).filter((n) => n.body.trim());
   const token = sync.getToken();
 
@@ -1003,7 +1006,26 @@ function renderSettingsView() {
           <label class="toggle-row"><span>Key haptics</span><input type="checkbox" id="kb-haptics" ${hapticsOn ? 'checked' : ''}></label>
           <label class="toggle-row"><span>Touch debug overlay</span><input type="checkbox" id="kb-debug" ${touchDebug ? 'checked' : ''}></label>
           <div class="toggle-row"><span>Learned words: ${learned.length}</span>${learned.length ? '<button class="link-btn" id="clear-learned">Clear</button>' : ''}</div>
-          <p class="settings-hint">Tips: drag along the space bar to move the cursor · swipe left on ⌫ to delete words · swipe up on a key for its number or symbol · swipe down on a letter to capitalize the word (again for ALL CAPS) · double-tap ⇧ for caps lock · hold a key for accents · backspace right after an autocorrect undoes it and learns the word.</p>
+          <div class="toggle-row"><span>Learned aim: ${aim.taps.toLocaleString()} taps${aim.keysLearned ? `, ${aim.keysLearned} keys tuned` : ''}</span>${aim.taps ? '<button class="link-btn" id="reset-aim">Reset</button>' : ''}</div>
+          <div class="toggle-row"><span>Clipboard history</span><button class="link-btn" id="clear-clips">Clear</button></div>
+
+          <div class="settings-sublabel">Text shortcuts</div>
+          <div class="shortcut-list" id="shortcut-list">
+            ${shortcutList.map((sc, i) => `
+              <div class="shortcut-row">
+                <code>${esc(sc.trigger)}</code>
+                <span>${esc(sc.expansion)}</span>
+                <button class="link-btn link-danger" data-del-shortcut="${i}" aria-label="Delete">✕</button>
+              </div>`).join('') || '<p class="settings-hint">No shortcuts yet.</p>'}
+          </div>
+          <div class="shortcut-add">
+            <input class="input" id="sc-trigger" placeholder="Shortcut, e.g. ;e" data-pk data-pk-cap="off" data-pk-correct="off">
+            <input class="input" id="sc-expansion" placeholder="Expands to, e.g. me@example.com" data-pk data-pk-cap="off" data-pk-correct="off">
+            <button class="btn btn-secondary settings-btn" id="sc-add">Add shortcut</button>
+          </div>
+          <p class="settings-hint">Type the shortcut then space or punctuation to expand it; backspace right after undoes it. Use {date}, {time}, {day} or {iso} for today's values.</p>
+
+          <p class="settings-hint">Tips: tap the select button (left of the suggestions) to select text: drag the space bar, or tap Word · Sentence · Para · All, then Cut · Copy · Paste · Aa; hold Paste for clipboard history · drag along the space bar to move the cursor · swipe left on ⌫ to delete words · swipe up on a key for its number or symbol · swipe down on a letter to capitalize the word (again for ALL CAPS) · double-tap ⇧ for caps lock · hold a key for accents · backspace right after an autocorrect undoes it and learns the word.</p>
         </section>
 
         <section class="settings-section">
@@ -1222,6 +1244,36 @@ function renderSettingsView() {
     await store.setKV('touchDebug', e.target.checked);
     keys.setDebug(e.target.checked);
   });
+  document.getElementById('reset-aim')?.addEventListener('click', () => {
+    if (!confirm('Forget how the keyboard has learned your aim?')) return;
+    keys.resetAim();
+    render();
+  });
+  document.getElementById('clear-clips').addEventListener('click', () => {
+    keys.clearClips();
+    showToast('Clipboard history cleared');
+  });
+  const saveShortcuts = async (list) => {
+    await store.setKV('shortcuts', list);
+    keys.setShortcuts(list);
+    render();
+  };
+  document.getElementById('shortcut-list').addEventListener('click', (e) => {
+    const i = e.target.closest('[data-del-shortcut]')?.dataset.delShortcut;
+    if (i === undefined) return;
+    saveShortcuts(shortcutList.filter((_, idx) => idx !== Number(i)));
+  });
+  document.getElementById('sc-add').addEventListener('click', () => {
+    const entry = {
+      trigger: document.getElementById('sc-trigger').value.trim(),
+      expansion: document.getElementById('sc-expansion').value
+    };
+    const problem = validateShortcut(entry);
+    if (problem) return showToast(problem);
+    const rest = shortcutList.filter((sc) => sc.trigger.toLowerCase() !== entry.trigger.toLowerCase());
+    saveShortcuts([...rest, entry]);
+    showToast(`Added ${entry.trigger}`);
+  });
   document.getElementById('clear-learned')?.addEventListener('click', async () => {
     await store.setKV('learnedWords', []);
     lang.setLearnedWords([]);
@@ -1399,6 +1451,7 @@ async function boot() {
     }
   });
   keys.setDebug(store.getKV('touchDebug', false));
+  keys.setShortcuts(store.getKV('shortcuts', DEFAULT_SHORTCUTS));
   lang.setLearnedWords(store.getKV('learnedWords', []));
   lang.setContextSource((context) => predictor.getContextCandidates(context));
 
