@@ -190,6 +190,26 @@ await tap('g');
 const after = await page.evaluate(async () => (await import('/js/keyboard/aim.js')).stats().taps);
 assert.equal(after - before, 2, 'retype recorded the miss and the new tap');
 
+// The bar names a long selection (iOS may not paint the highlight)
+await setText('We need to investigate why models are not downloading', 0);
+await page.locator('.pk-select').tap();
+await chip('all');
+assert.equal(await page.$eval('.pk-action', (el) => el.textContent), '9 words');
+assert.equal(await page.$eval('.pk-sel-preview', (el) => el.hidden ? null : el.textContent), '“We need to investigate why models are not downl…”');
+await page.locator('.pk-select').tap();
+
+// ---------- Styles actually apply ----------
+// (behaviour tests can't see a broken stylesheet; an unclosed rule once
+// left every keyboard style after it dead on the phone)
+await setText('style check', 0);
+await page.locator('.pk-select').tap();
+assert.equal(await page.$eval('.pk-select', (el) => getComputedStyle(el).backgroundColor), 'rgb(10, 132, 255)', 'lit Select button');
+assert.equal(await page.$eval('.pk-chip', (el) => getComputedStyle(el).borderRadius), '16px', 'chip styled');
+assert.equal(await page.$eval('.pk-action', (el) => getComputedStyle(el).fontSize), '12px', 'info label styled');
+await chip('all');
+assert.equal(await page.$eval('.pk-sel-preview', (el) => getComputedStyle(el).position), 'absolute', 'preview strip styled');
+await page.locator('.pk-select').tap();
+
 assert.deepEqual(errors, []);
 await browser.close();
 console.log('select/clipboard/shortcuts/aim e2e: all checks passed');

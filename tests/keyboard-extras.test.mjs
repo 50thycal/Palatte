@@ -43,3 +43,16 @@ test('clipboard history keeps the latest 10, newest first, deduped', () => {
   assert.equal(clips.preview('a'.repeat(40), 10), 'aaaaaaaaa…');
   clips.clear();
 });
+
+test('stylesheet braces balance (an unclosed rule silently nests everything after it)', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const css = (await readFile(new URL('../css/styles.css', import.meta.url), 'utf8')).replace(/\/\*[\s\S]*?\*\//g, '');
+  const open = [];
+  css.split('\n').forEach((line, i) => {
+    for (const ch of line) {
+      if (ch === '{') open.push(`line ${i + 1}: ${line.trim()}`);
+      else if (ch === '}') assert.ok(open.pop(), `stray } on line ${i + 1}`);
+    }
+  });
+  assert.deepEqual(open, [], 'unclosed rule');
+});
