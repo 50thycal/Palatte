@@ -216,6 +216,7 @@ function build() {
       <div class="pk-preds"></div>
       <button class="pk-bar-btn pk-action" data-bar="action"></button>
       <div class="pk-clips" hidden></div>
+      <div class="pk-sel-preview" hidden></div>
     </div>
     <div class="pk-rows"></div>
     <div class="pk-popup"></div>
@@ -1331,6 +1332,7 @@ function renderBar() {
   s.barEl.classList.toggle('pk-bar-selecting', s.select.on);
   selectBtn.classList.toggle('pk-on', s.select.on);
   selectBtn.setAttribute('aria-label', s.select.on ? 'Done selecting' : 'Select text');
+  renderSelectionPreview();
 
   if (s.barNote) {
     preds.innerHTML = `<span class="pk-bar-note">${escapeHtml(s.barNote)}</span>`;
@@ -1366,6 +1368,18 @@ function selectionLabel() {
   const text = el.value.slice(el.selectionStart, el.selectionEnd);
   const words = (text.match(/\S+/g) || []).length;
   return words > 1 ? `${words} words` : `${text.length} char${text.length === 1 ? '' : 's'}`;
+}
+
+/**
+ * Show what's selected in a strip above the bar: iOS doesn't reliably paint
+ * the selection highlight while its own keyboard is hidden
+ */
+function renderSelectionPreview() {
+  const strip = s.barEl.querySelector('.pk-sel-preview');
+  const el = s.target;
+  const text = el && s.select.on && !s.clipsOpen ? el.value.slice(el.selectionStart, el.selectionEnd) : '';
+  strip.hidden = !text.trim();
+  if (!strip.hidden) strip.textContent = `“${clips.preview(text, 48)}”`;
 }
 
 function flashNote(text) {
@@ -1673,12 +1687,14 @@ function openClips() {
     <button class="pk-clip pk-clip-system" data-clip="system">Paste from iPhone clipboard…</button>`;
   panel.hidden = false;
   s.clipsOpen = true;
+  renderSelectionPreview();
 }
 
 function closeClips() {
   const panel = s.barEl?.querySelector('.pk-clips');
   if (panel) panel.hidden = true;
   s.clipsOpen = false;
+  if (s.barEl) renderSelectionPreview();
 }
 
 function escapeHtml(text) {

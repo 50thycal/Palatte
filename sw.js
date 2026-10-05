@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palate-v14';
+const CACHE_NAME = 'palate-v15';
 const ASSETS = [
   '/',
   '/index.html',
@@ -56,13 +56,20 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
-    try {
-      const response = await Promise.race([
-        fetch(request),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
-      ]);
+    // Keep the network copy even if it arrives after the timeout, so a slow
+    // connection can't pin an old file in the cache (old CSS + new JS)
+    const network = fetch(request).then((response) => {
       if (response.ok) cache.put(request, response.clone());
       return response;
+    });
+    try {
+      event.waitUntil(network.catch(() => {}));
+    } catch { /* lifetime already ended */ }
+    try {
+      return await Promise.race([
+        network,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+      ]);
     } catch {
       const cached = await cache.match(request, { ignoreSearch: true });
       if (cached) return cached;
