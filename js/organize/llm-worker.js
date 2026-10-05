@@ -2,4 +2,11 @@
 import { WebWorkerMLCEngineHandler } from '/vendor/web-llm/index.js';
 
 const handler = new WebWorkerMLCEngineHandler();
-self.onmessage = (msg) => handler.onmessage(msg);
+self.onmessage = (msg) => {
+  // Diagnostics ping: proves the worker (and the library) loaded
+  if (msg.data && msg.data.palatePing) {
+    self.postMessage({ palatePong: true, gpu: 'gpu' in navigator });
+    return;
+  }
+  handler.onmessage(msg);
+};

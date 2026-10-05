@@ -10,6 +10,7 @@ import { buildMarkdownFiles } from './markdown.js';
 import { createZip } from './zip.js';
 import * as organizer from './organize/organizer.js';
 import * as llm from './organize/llm.js';
+import { runDiagnostics, formatReport } from './organize/diagnostics.js';
 
 const app = document.getElementById('app');
 applyTheme(getTheme());
@@ -977,6 +978,15 @@ function renderSettingsView() {
               <button class="btn btn-primary" id="org-download"></button>
               <button class="btn btn-secondary" id="org-delete">Remove</button>
             </div>
+            <details class="org-diag" id="org-diag">
+              <summary>Details &amp; diagnostics</summary>
+              <div class="row-buttons">
+                <button class="btn btn-secondary" id="org-diag-run">Run diagnostics</button>
+                <button class="btn btn-secondary" id="org-diag-copy">Copy report</button>
+              </div>
+              <ul class="diag-list" id="org-diag-list"></ul>
+              <pre class="diag-log" id="org-diag-log"></pre>
+            </details>
             <p class="settings-hint">Runs entirely on your phone's GPU: notes never leave the device and it works offline. Keep Palate open while it downloads. Until it's downloaded, a basic rule-based tidy-up is used.</p>
           </div>
           <button class="btn btn-secondary settings-btn" id="org-all">Organize existing notes</button>
@@ -1156,6 +1166,37 @@ function renderSettingsView() {
     await organizer.deleteModel();
     paintOrganizer();
   });
+  // Diagnostics: step-by-step checks + recent model log, copyable
+  let diagResults = [];
+  const diagList = document.getElementById('org-diag-list');
+  const diagLog = document.getElementById('org-diag-log');
+  const paintDiag = (results) => {
+    diagResults = results;
+    diagList.innerHTML = results.map((r) =>
+      `<li class="${r.ok ? 'ok' : 'fail'}"><strong>${r.ok ? '✓' : '✗'} ${esc(r.name)}</strong><span>${esc(r.detail)}</span></li>`
+    ).join('');
+  };
+  const paintLog = () => {
+    const lines = llm.getLog();
+    diagLog.textContent = lines.length ? lines.slice(-40).join('\n') : 'No model activity yet.';
+  };
+  document.getElementById('org-diag').addEventListener('toggle', paintLog);
+  document.getElementById('org-diag-run').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    try {
+      paintDiag(await runDiagnostics(organizer.modelKey(), paintDiag));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run diagnostics';
+      paintLog();
+    }
+  });
+  document.getElementById('org-diag-copy').addEventListener('click', () => {
+    copyToClipboard(formatReport(diagResults, organizer.modelKey()));
+  });
+
   document.getElementById('org-all').addEventListener('click', async () => {
     const n = await organizer.enqueueAll();
     showToast(n ? `Organizing ${plural(n, 'note')}` : 'Everything is already organized');

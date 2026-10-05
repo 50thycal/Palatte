@@ -53,7 +53,55 @@ export function phaseOf(text) {
 const LIB_URL = '/vendor/web-llm/index.js';
 const WORKER_URL = '/js/organize/llm-worker.js';
 
+// If the worker hasn't reported any progress by now, it's stuck (WebLLM
+// waits forever on a worker that failed to start)
+const WORKER_START_MS = 45 * 1000;
+// Between progress updates (one weight shard on a slow connection, or GPU
+// shader compilation, can legitimately take a while)
+const WORKER_STALL_MS = 4 * 60 * 1000;
+const LOG_LIMIT = 120;
+
 let lib = null;
+const log = [];
+
+/**
+ * Model event log (shown in Settings > On-device model > Details), so a
+ * failure on the phone can be read and reported.
+ */
+export function logEvent(text) {
+  const line = `${new Date().toISOString().slice(11, 19)} ${text}`;
+  log.push(line);
+  if (log.length > LOG_LIMIT) log.splice(0, log.length - LOG_LIMIT);
+  try {
+    localStorage.setItem('palate_llm_log', JSON.stringify(log.slice(-60)));
+  } catch { /* storage full or unavailable */ }
+}
+
+export function getLog() {
+  if (!log.length) {
+    // Include the previous session's log (e.g. before an iOS kill)
+    try {
+      const prev = JSON.parse(localStorage.getItem('palate_llm_log') || '[]');
+      if (prev.length) return ['(previous session)', ...prev];
+    } catch { /* ignore */ }
+  }
+  return [...log];
+}
+
+/**
+ * WebLLM rejects with strings from the worker and Errors from the main
+ * thread; keep whatever text there is.
+ */
+export function errorText(err) {
+  if (!err) return 'Unknown error';
+  if (typeof err === 'string') return err;
+  if (err.message) return err.name && !err.message.startsWith(err.name) ? `${err.name}: ${err.message}` : err.message;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
 let engine = null;
 let engineModel = null;
 let loading = null;
@@ -123,26 +171,86 @@ export async function load(key, onProgress = () => {}) {
   loading = (async () => {
     const s = await checkSupport();
     if (!s.ok) throw new Error(s.reason);
+    logEvent(`load ${id} (shader-f16: ${s.f16 ? 'yes' : 'no'})`);
     const webllm = await getLib();
     await unload();
-    const engineConfig = { initProgressCallback: (r) => onProgress({ progress: r.progress, text: r.text }) };
+
+    let lastText = '';
+    const engineConfig = {
+      initProgressCallback: (r) => {
+        if (r.text !== lastText && (!/\d+%/.test(r.text) || /(\b[05]0|100)% completed/.test(r.text))) {
+          logEvent(r.text);
+        }
+        lastText = r.text;
+        onProgress({ progress: r.progress, text: r.text });
+      }
+    };
+
     try {
-      const worker = new Worker(WORKER_URL, { type: 'module' });
-      engine = await webllm.CreateWebWorkerMLCEngine(worker, id, engineConfig);
+      engine = await createInWorker(webllm, id, engineConfig);
+      logEvent('engine ready (worker)');
     } catch (err) {
-      // Some browsers can't use WebGPU from workers: run on the main thread
-      console.warn('[llm] worker engine failed, using main thread', err);
+      logEvent(`worker engine failed: ${errorText(err)}`);
+      if (/fetch|network|load failed|quota|storage/i.test(errorText(err))) throw err;
+      // Some browsers can't run WebGPU in a worker: try the main thread
+      logEvent('retrying on the main thread');
       engine = await webllm.CreateMLCEngine(id, engineConfig);
+      logEvent('engine ready (main thread)');
     }
     engineModel = id;
     return engine;
-  })();
+  })().catch((err) => {
+    logEvent(`load failed: ${errorText(err)}`);
+    throw err;
+  });
 
   try {
     return await loading;
   } finally {
     loading = null;
   }
+}
+
+/**
+ * Start the engine in a worker, but never hang: a worker that fails to load
+ * (error event) or never reports progress is terminated and rejected.
+ */
+function createInWorker(webllm, id, engineConfig) {
+  const worker = new Worker(WORKER_URL, { type: 'module' });
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timer = null;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    const fail = (reason) => {
+      worker.terminate();
+      finish(reject, reason);
+    };
+    const armWatchdog = (ms, message) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fail(new Error(message)), ms);
+    };
+    worker.addEventListener('error', (e) => {
+      e.preventDefault?.();
+      fail(new Error(`The model worker failed to start${e.message ? `: ${e.message}` : ''}`));
+    });
+    const config = {
+      ...engineConfig,
+      initProgressCallback: (r) => {
+        armWatchdog(WORKER_STALL_MS, 'The model download stalled (no progress for 4 minutes)');
+        engineConfig.initProgressCallback(r);
+      }
+    };
+    armWatchdog(WORKER_START_MS, 'The model worker never started (no response in 45 seconds)');
+    webllm.CreateWebWorkerMLCEngine(worker, id, config).then(
+      (eng) => finish(resolve, eng),
+      (err) => fail(err)
+    );
+  });
 }
 
 /**

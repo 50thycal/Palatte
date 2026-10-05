@@ -169,13 +169,19 @@ async function recoverFromCrash() {
 }
 
 function friendlyError(err) {
-  const msg = String(err?.message || err);
-  if (/memory|OOM|allocation|device lost|DeviceLost/i.test(msg)) {
-    return 'The phone ran out of GPU memory. Try the lite model in Settings.';
+  const raw = llm.errorText(err);
+  let friendly = null;
+  if (/memory|OOM|allocation|device lost|DeviceLost/i.test(raw)) {
+    friendly = 'The phone ran out of GPU memory. Try a smaller model.';
+  } else if (/quota|storage/i.test(raw)) {
+    friendly = 'Not enough storage space for the model.';
+  } else if (/fetch|network|load failed/i.test(raw)) {
+    friendly = "Couldn't download the model files.";
+  } else if (/worker/i.test(raw)) {
+    friendly = "The model couldn't start.";
   }
-  if (/quota|storage/i.test(msg)) return 'Not enough storage space for the model.';
-  if (/fetch|network|Failed to fetch/i.test(msg)) return 'Download interrupted. Check the connection and try again.';
-  return msg;
+  // Keep the real cause visible so it can be diagnosed
+  return friendly ? `${friendly} (${raw})` : raw;
 }
 
 // ============================================

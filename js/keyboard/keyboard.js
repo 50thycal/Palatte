@@ -995,13 +995,18 @@ function startRepeat(t) {
 
 function toggleShift() {
   const now = Date.now();
-  if (now - s.lastShiftTap < DOUBLE_SHIFT_MS) {
+  if (s.shift === 'lock') {
+    // Any tap releases caps lock (never re-locks, however fast)
+    s.shift = 'off';
+    s.lastShiftTap = 0;
+  } else if (now - s.lastShiftTap < DOUBLE_SHIFT_MS) {
     s.shift = 'lock';
+    s.lastShiftTap = 0;
     setTimeout(() => haptics.tick(), 70); // second tick confirms caps lock
   } else {
     s.shift = s.shift === 'off' ? 'once' : 'off';
+    s.lastShiftTap = now;
   }
-  s.lastShiftTap = now;
   s.shiftManual = true;
   paintShift();
 }

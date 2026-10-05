@@ -137,6 +137,15 @@ await page.waitForTimeout(60);
 assert.ok(await page.$eval('.pk-key-shift', (el) => el.classList.contains('pk-shift-lock')), 'caps lock indicator on');
 await type('abc');
 assert.equal(await value(), 'x ABC', 'caps lock stays on across letters');
+// Releasing right away (inside the double-tap window) must not re-lock
+await page.touchscreen.tap(shift.x, shift.y);
+await page.waitForTimeout(20);
+assert.ok(!(await page.$eval('.pk-key-shift', (el) => el.classList.contains('pk-shift-lock'))), 'quick tap releases caps lock');
+await page.touchscreen.tap(shift.x, shift.y);
+await page.waitForTimeout(40);
+await page.touchscreen.tap(shift.x, shift.y);
+await page.waitForTimeout(60);
+assert.ok(await page.$eval('.pk-key-shift', (el) => el.classList.contains('pk-shift-lock')), 'double tap locks again');
 if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/capslock.png` });
 await page.touchscreen.tap(shift.x, shift.y);
 await page.waitForTimeout(60);
