@@ -14,6 +14,11 @@ A local-first notes app for iPhone (installable PWA) with its own keyboard.
 - **Palate Keys.** An in-app keyboard replaces the iOS keyboard. It has
   predictions in the top row, autocorrect that learns from your notes, a space-bar
   trackpad, swipe-to-delete words, swipe-up symbols and long-press accents.
+  A Select button turns the space bar into a selection handle, with Word,
+  Sentence, Para and All chips plus Cut, Copy, Paste and Aa. Palate keeps its own
+  history of the last 10 clips, so in-app paste never shows the iOS bubble.
+  Text shortcuts (`;d` → today's date) expand as you type. The keyboard also
+  learns where you actually tap each key.
 - **You own the data.** Notes live in IndexedDB on the device. They sync to your
   own Postgres database on Vercel, are backed up nightly as Markdown to a private
   GitHub repo, and can be exported as a Markdown zip at any time.
@@ -42,6 +47,7 @@ npm install
 DATABASE_URL=postgres://… PALATE_TOKEN=dev npm run dev   # http://localhost:3000
 TEST_DATABASE_URL=postgres://… npm test                  # API + keyboard + export tests
 node tests/e2e/keyboard.e2e.mjs                          # needs the dev server + Playwright
+node tests/e2e/select.e2e.mjs                            # selection, clipboard, shortcuts, aim
 ```
 
 There's no build step: `index.html` loads ES modules from `js/`, and `api/` holds

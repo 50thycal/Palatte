@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palate-v13';
+const CACHE_NAME = 'palate-v14';
 const ASSETS = [
   '/',
   '/index.html',
@@ -18,6 +18,9 @@ const ASSETS = [
   '/js/keyboard/language.js',
   '/js/keyboard/layouts.js',
   '/js/keyboard/haptics.js',
+  '/js/keyboard/aim.js',
+  '/js/keyboard/clips.js',
+  '/js/keyboard/shortcuts.js',
   '/js/organize/organizer.js',
   '/js/organize/heuristics.js',
   '/js/organize/prompt.js',
