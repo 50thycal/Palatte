@@ -1421,4 +1421,40 @@ html.pk-open .organize-banner { display: none; }
   border-radius: 8px;
   background: var(--bg-sunken);
   color: var(--text-muted);
+
+/* ============ Shift / caps lock states ============ */
+
+/* One-shot shift: key brightens like a pressed toggle */
+.pk-key-shift.pk-shift-once {
+  background: var(--kb-key);
+}
+
+/* Caps lock: bright key + a lit indicator, like a hardware keyboard LED */
+.pk-key-shift.pk-shift-lock {
+  background: var(--kb-key);
+  color: #0a84ff;
+}
+
+.pk-key-shift::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(127, 127, 127, 0.35);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.pk-key-shift.pk-shift-lock::after {
+  background: #34c759;
+  box-shadow: 0 0 6px 1px rgba(52, 199, 89, 0.85);
+}
+
+/* Wide preview bubble (swipe-down case change shows the new word) */
+.pk-popup-wide {
+  font-size: 22px;
+  padding: 0 14px;
+  white-space: nowrap;
 }
