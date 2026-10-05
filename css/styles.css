@@ -1616,3 +1616,8 @@ html.pk-open .organize-banner { display: none; }
   pointer-events: none;
   z-index: 2;
 }
+
+/* Chip row scrolls sideways: fade whichever edge has more */
+.pk-preds.pk-more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.pk-preds.pk-more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
+.pk-preds.pk-more-left.pk-more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
