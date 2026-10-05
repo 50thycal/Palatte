@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palate-v10';
+const CACHE_NAME = 'palate-v12';
 const ASSETS = [
   '/',
   '/index.html',
@@ -23,6 +23,7 @@ const ASSETS = [
   '/js/organize/prompt.js',
   '/js/organize/llm.js',
   '/js/organize/llm-worker.js',
+  '/js/organize/diagnostics.js',
   '/data/words-en.txt',
   '/icons/icon.svg',
   '/manifest.json'

@@ -1381,3 +1381,44 @@ html.pk-open .organize-banner { display: none; }
 }
 
 #org-status.error { color: var(--bad); }
+
+/* Model diagnostics */
+.org-diag summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.diag-list {
+  list-style: none;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diag-list li {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--bg-sunken);
+}
+
+.diag-list li.ok strong { color: var(--ok); }
+.diag-list li.fail strong { color: var(--bad); }
+.diag-list li span { color: var(--text-muted); word-break: break-word; }
+
+.diag-log {
+  font: 11px/1.45 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+}
