@@ -325,7 +325,12 @@ export async function complete(prefix, context = [], k = 3) {
     .map(([w]) => (w === 'i' || w.startsWith("i'") ? 'I' + w.slice(1) : w));
 }
 
-const STARTERS = ['I', 'The', "I'm", 'We', 'It', 'This', 'What', 'So'];
+let STARTERS = ['I', 'The', "I'm", 'We', 'It', 'This', 'What', 'So'];
+
+/** The words offered at the start of a sentence (default: common openers) */
+export function setStarters(words) {
+  STARTERS = words && words.length ? [...words] : ['I', 'The', "I'm", 'We', 'It', 'This', 'What', 'So'];
+}
 
 /**
  * Next-word suggestions after a word boundary

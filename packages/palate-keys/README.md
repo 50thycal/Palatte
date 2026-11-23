@@ -54,7 +54,7 @@ The keyboard sets `--kb-h` on `<html>` (its height, `0px` when hidden) and
 Runtime: `setMode`, `setAutocorrect`, `setHaptics`, `setHotkeys`,
 `registerLayout`, `setShortcuts`, `setAction`, `flash`, `decorate`, `refresh`.
 Language hooks live in `lang` (`setLearnedWords`, `setContextSource`,
-`setDictionary`, `setPersonalVocabulary`): feed it your game's own vocabulary so
+`setStarters`, `setDictionary`, `setPersonalVocabulary`, `correct`): feed it your game's own vocabulary so
 ship names, places and slang are predicted and not "corrected".
 
 ## Hotkeys

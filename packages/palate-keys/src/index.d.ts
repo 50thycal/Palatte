@@ -98,7 +98,15 @@ export namespace lang {
   /** Extra words with a weight: ship names, places, slang */
   function setPersonalVocabulary(map: Map<string, number>): void;
   function setLearnedWords(words: string[]): void;
-  function setContextSource(fn: (context: string[]) => unknown): void;
+  /** Phrase statistics for the last one or two words typed (lowercase): feeds predictions and autocorrect */
+  function setContextSource(
+    fn: (context: string[]) => Promise<{ bigrams?: { word: string; count: number }[]; trigrams?: { word: string; count: number }[] }>,
+  ): void;
+  /** The words offered at the start of a sentence */
+  function setStarters(words: string[]): void;
+  /** The corrected word, or null to leave it alone */
+  function correct(word: string, opts?: { sentenceStart?: boolean; contextCounts?: Map<string, number> | null }): string | null;
+  function matchCase(template: string, word: string): string;
   function isKnown(word: string): boolean;
   const DEFAULT_DICTIONARY_URL: string;
 }
