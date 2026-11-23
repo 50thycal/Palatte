@@ -57,6 +57,7 @@ const s = {
   pending: null,           // { word, corr } computed while typing
   slots: [],
   action: null,            // { label, onTap } shown at the right of the bar
+  switching: null,         // field being handed to the system keyboard
   hotkeys: new Map(),      // set name -> [hotkey]; a field picks one with data-pk-hotkeys
   hotkeyLayers: ['letters'],
   autocorrect: true,
@@ -125,7 +126,8 @@ export function init({
   window.addEventListener('scroll', pinScroll, { passive: true });
   window.visualViewport?.addEventListener('scroll', pinScroll);
   window.visualViewport?.addEventListener('resize', () => s.visible && requestAnimationFrame(measure));
-  document.addEventListener('focusout', () => {
+  document.addEventListener('focusout', (e) => {
+    if (e.target?.hasAttribute?.('data-pk-system') && s.switching !== e.target) reclaimField(e.target);
     setTimeout(() => {
       if (!isPkField(document.activeElement)) hide();
     }, 0);
@@ -220,20 +222,45 @@ export function isVisible() {
  * its autocorrect) when Palate Keys is on, restore it when off.
  */
 export function decorate(root = document) {
-  root.querySelectorAll('[data-pk]').forEach((el) => {
-    if (s.enabled) {
-      el.setAttribute('inputmode', 'none');
-      el.setAttribute('autocomplete', 'off');
-      el.setAttribute('autocorrect', 'off');
-      el.setAttribute('autocapitalize', 'off');
-      el.spellcheck = false;
-    } else {
-      el.removeAttribute('inputmode');
-      el.setAttribute('autocorrect', 'on');
-      el.setAttribute('autocapitalize', el.dataset.pkCap === 'off' ? 'off' : 'sentences');
-      el.spellcheck = true;
-    }
-  });
+  root.querySelectorAll('[data-pk]').forEach(decorateField);
+  if (root.matches?.('[data-pk]')) decorateField(root);
+}
+
+function decorateField(el) {
+  if (s.enabled && !el.hasAttribute('data-pk-system')) {
+    el.setAttribute('inputmode', 'none');
+    el.setAttribute('autocomplete', 'off');
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'off');
+    el.spellcheck = false;
+  } else {
+    el.removeAttribute('inputmode');
+    el.setAttribute('autocorrect', 'on');
+    el.setAttribute('autocapitalize', el.dataset.pkCap === 'off' ? 'off' : 'sentences');
+    el.spellcheck = true;
+  }
+}
+
+/**
+ * Hand the focused field to the system keyboard (for dictation, or any
+ * system feature the in-app keyboard can't do). Palate Keys takes the field
+ * back as soon as it loses focus.
+ */
+function useSystemKeyboard() {
+  const el = s.target;
+  if (!el) return;
+  el.setAttribute('data-pk-system', '');
+  decorateField(el);
+  s.switching = el;
+  // Blur and refocus in the same tick, so it still counts as the user's tap
+  el.blur();
+  el.focus();
+  s.switching = null;
+}
+
+function reclaimField(el) {
+  el.removeAttribute('data-pk-system');
+  decorateField(el);
 }
 
 /**
@@ -253,7 +280,8 @@ export function refresh() {
 // ============================================
 
 function isPkField(el) {
-  return Boolean(el && el.matches && el.matches('[data-pk]'));
+  // data-pk-system: this field has been handed to the system keyboard (dictation)
+  return Boolean(el && el.matches && el.matches('[data-pk]:not([data-pk-system])'));
 }
 
 function build() {
@@ -450,7 +478,7 @@ function customDef(h) {
     w: h.w,
     plain: h.style === 'plain',
     insert: h.insert,
-    run: h.run,
+    run: h.dictate ? (ctx) => ctx.useSystemKeyboard() : h.run,
     alt: sub(h.alt),
     hold: sub(h.hold)
   };
@@ -458,7 +486,7 @@ function customDef(h) {
 
 function normaliseDef(def) {
   if (typeof def === 'string') return { k: def };
-  if (!def.action && !def.k && (def.label !== undefined || def.insert !== undefined || def.run || def.layer)) return customDef(def);
+  if (!def.action && !def.k && (def.label !== undefined || def.insert !== undefined || def.run || def.layer || def.dictate)) return customDef(def);
   return def;
 }
 
@@ -919,6 +947,7 @@ function makeContext() {
     submit: () => typeEnter(),
     setLayer: (name) => setLayer(name),
     flash: (text) => flashNote(text),
+    useSystemKeyboard: () => useSystemKeyboard(),
     hide: () => el.blur()
   };
 }

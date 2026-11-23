@@ -452,3 +452,24 @@
 .pk-key-hot.pk-key-down { background: var(--kb-hot); filter: brightness(1.25); }
 .pk-key-custom.pk-key-down { background: var(--kb-key-down); }
 .pk-key-custom.pk-key-hot.pk-key-down { background: var(--kb-hot); }
+
+/* ============ Compact: a phone held sideways ============ */
+/* A landscape phone is ~390px tall: keep the keyboard under half of it. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .pk { padding-bottom: calc(2px + var(--kb-safe-bottom)); }
+  .pk-bar { height: 32px; }
+  .pk-bar-btn { height: 28px; }
+  .pk-rows { gap: 5px; padding-bottom: 3px; }
+  .pk-row { height: 36px; gap: 5px; }
+  .pk-row-hot { height: 30px; }
+  .pk-key { font-size: 19px; }
+  .pk-key-custom { font-size: 13px; }
+  .pk-key-alt { font-size: 9px; top: 2px; }
+  .pk-pred { font-size: 15px; }
+}
+
+@media (orientation: landscape) and (max-height: 400px) {
+  .pk-row { height: 31px; }
+  .pk-row-hot { height: 27px; }
+  .pk-key { font-size: 17px; }
+}

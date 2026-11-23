@@ -32,7 +32,8 @@ await page.evaluate(async () => {
     { label: 'Hi', insert: 'Hello {cursor}!' },
     { label: 'UP', run: (ctx) => ctx.replaceAll(ctx.text.toUpperCase()) },
     { label: 'Ping', run: (ctx) => { window.__ran.push(ctx.selection.text); }, style: 'plain' },
-    { label: 'FN', layer: 'fn' }
+    { label: 'FN', layer: 'fn' },
+    { label: 'Mic', dictate: true }
   ]);
   keys.setHotkeys('chat', [{ label: 'Chat', insert: 'chat ' }]);
 });
@@ -70,7 +71,7 @@ async function gesture(label, { dx = 0, dy = 0, holdMs = 0, id = 40 }) {
 }
 
 // The strip renders above the letters
-assert.equal(await page.$$eval('.pk-row-hot .pk-key', (els) => els.length), 5, 'five hotkeys');
+assert.equal(await page.$$eval('.pk-row-hot .pk-key', (els) => els.length), 6, 'six hotkeys');
 assert.ok(await page.$eval('.pk-row-hot + .pk-row .pk-key-label', (el) => el.textContent.trim().toLowerCase() === 'q'), 'letters follow the strip');
 assert.equal(await page.$eval('.pk-row-hot .pk-key-hot .pk-key-alt', (el) => el.textContent), 'ty', 'swipe-up label is shown');
 
@@ -132,6 +133,24 @@ await page.waitForTimeout(100);
 await page.locator('#palate-input').tap();
 await page.waitForTimeout(300);
 assert.equal(await page.$$eval('.pk-row-hot', (e) => e.length), 0, 'an unknown set shows no strip');
+
+// Dictation: the field is handed to the system keyboard, then reclaimed on blur
+await page.evaluate(() => document.querySelector('#palate-input').setAttribute('data-pk-hotkeys', 'default'));
+await page.evaluate(() => document.activeElement.blur());
+await page.waitForTimeout(100);
+await page.locator('#palate-input').tap();
+await page.waitForTimeout(300);
+const mic = await hot('Mic');
+await page.touchscreen.tap(mic.x, mic.y);
+await page.waitForTimeout(150);
+assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), true, 'dictate hands the field over');
+assert.equal(await page.$eval('#palate-input', (el) => el.getAttribute('inputmode')), null, 'system keyboard allowed');
+assert.equal(await page.$eval('#palate-input', (el) => document.activeElement === el), true, 'field keeps focus');
+assert.equal(await page.$eval('.pk', (el) => el.classList.contains('pk-visible')), false, 'in-app keyboard steps aside');
+await page.evaluate(() => document.activeElement.blur());
+await page.waitForTimeout(150);
+assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), false, 'field is reclaimed on blur');
+assert.equal(await page.$eval('#palate-input', (el) => el.getAttribute('inputmode')), 'none', 'in-app keyboard is back');
 
 assert.deepEqual(errors, [], 'no page errors');
 await browser.close();
