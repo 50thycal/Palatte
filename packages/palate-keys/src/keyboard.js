@@ -57,6 +57,7 @@ const s = {
   pending: null,           // { word, corr } computed while typing
   slots: [],
   action: null,            // { label, onTap } shown at the right of the bar
+  watcher: null,           // MutationObserver: is the field still in the page?
   switching: null,         // field being handed to the system keyboard
   hotkeys: new Map(),      // set name -> [hotkey]; a field picks one with data-pk-hotkeys
   hotkeyLayers: ['letters'],
@@ -406,6 +407,7 @@ function show(target) {
     s.visible = true;
     s.root.classList.add('pk-visible');
     document.documentElement.classList.add('pk-open');
+    watchTarget();
   }
   renderKeys();
   requestAnimationFrame(() => {
@@ -415,8 +417,22 @@ function show(target) {
   });
 }
 
+/**
+ * A field removed from the page (a dialog replaced, a screen re-rendered)
+ * fires no focusout: hide the keyboard when its field is gone.
+ */
+function watchTarget() {
+  if (!s.watcher) {
+    s.watcher = new MutationObserver(() => {
+      if (s.target && !s.target.isConnected) hide();
+    });
+  }
+  s.watcher.observe(document.body, { childList: true, subtree: true });
+}
+
 function hide() {
   if (!s.visible) return;
+  s.watcher?.disconnect();
   s.visible = false;
   s.target = null;
   s.select.on = false;

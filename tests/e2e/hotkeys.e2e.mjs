@@ -152,6 +152,15 @@ await page.waitForTimeout(150);
 assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), false, 'field is reclaimed on blur');
 assert.equal(await page.$eval('#palate-input', (el) => el.getAttribute('inputmode')), 'none', 'in-app keyboard is back');
 
+// A field removed while focused (a dialog is replaced) takes the keyboard with it
+await page.locator('#palate-input').tap();
+await page.waitForTimeout(300);
+assert.equal(await page.$eval('.pk', (el) => el.classList.contains('pk-visible')), true, 'keyboard is up');
+await page.evaluate(() => document.querySelector('#palate-input').remove());
+await page.waitForTimeout(150);
+assert.equal(await page.$eval('.pk', (el) => el.classList.contains('pk-visible')), false, 'keyboard hides when its field is removed');
+assert.equal(await page.evaluate(() => document.documentElement.classList.contains('pk-open')), false, 'pk-open is cleared');
+
 assert.deepEqual(errors, [], 'no page errors');
 await browser.close();
 console.log('hotkeys e2e: all checks passed');
