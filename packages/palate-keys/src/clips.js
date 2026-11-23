@@ -5,24 +5,21 @@
  * apps). Kept on this device only.
  */
 
-const STORE_KEY = 'palate_clips';
+import * as storage from './storage.js';
+
+const STORE_KEY = 'clips';
 const MAX = 10;
 
 let clips = load();
 
 function load() {
-  try {
-    const list = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
+  const list = storage.read(STORE_KEY, []);
+  return Array.isArray(list) ? list : [];
 }
+storage.onConfigure(() => { clips = load(); });
 
 function save() {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(clips));
-  } catch { /* storage unavailable */ }
+  storage.write(STORE_KEY, clips);
 }
 
 export function push(text) {

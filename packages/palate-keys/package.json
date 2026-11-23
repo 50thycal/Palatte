@@ -1,0 +1,18 @@
+{
+  "name": "palate-keys",
+  "version": "0.2.0",
+  "description": "An in-app touch keyboard for web apps and games: swipe-up symbols, trackpad space bar, autocorrect, predictions, selection tools, and host-defined hotkeys.",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
+    "./css/keyboard.css": "./css/keyboard.css",
+    "./data/words-en.txt": "./data/words-en.txt",
+    "./src/*": "./src/*"
+  },
+  "files": ["src", "css", "data", "README.md"],
+  "sideEffects": ["*.css"],
+  "license": "UNLICENSED",
+  "private": true
+}

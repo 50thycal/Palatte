@@ -3,9 +3,9 @@ import * as sync from './sync.js';
 import * as search from './search.js';
 import * as morph from './morph.js';
 import * as predictor from './predictor.js';
-import * as keys from './keyboard/keyboard.js';
-import * as lang from './keyboard/language.js';
-import { DEFAULT_SHORTCUTS, validate as validateShortcut } from './keyboard/shortcuts.js';
+import * as keys from '../packages/palate-keys/src/keyboard.js';
+import * as lang from '../packages/palate-keys/src/language.js';
+import { DEFAULT_SHORTCUTS, validate as validateShortcut } from '../packages/palate-keys/src/shortcuts.js';
 import { getTheme, applyTheme, toggleTheme } from './theme.js';
 import { buildMarkdownFiles } from './markdown.js';
 import { createZip } from './zip.js';
@@ -1459,8 +1459,7 @@ async function boot() {
   sync.start();
   organizer.start();
 
-  // Heavier work after first paint
-  lang.loadDictionary().then(() => keys.refresh()).catch((err) => console.warn('[keys] dictionary', err));
+  // Heavier work after first paint (keys.init already started the dictionary load)
   morph.initialize().then(refreshVocabulary).then(() => keys.refresh());
 }
 

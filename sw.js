@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palate-v17';
+const CACHE_NAME = 'palate-v18';
 const ASSETS = [
   '/',
   '/index.html',
@@ -14,20 +14,22 @@ const ASSETS = [
   '/js/tokenizer.js',
   '/js/predictor.js',
   '/js/morph.js',
-  '/js/keyboard/keyboard.js',
-  '/js/keyboard/language.js',
-  '/js/keyboard/layouts.js',
-  '/js/keyboard/haptics.js',
-  '/js/keyboard/aim.js',
-  '/js/keyboard/clips.js',
-  '/js/keyboard/shortcuts.js',
+  '/packages/palate-keys/src/keyboard.js',
+  '/packages/palate-keys/src/language.js',
+  '/packages/palate-keys/src/layouts.js',
+  '/packages/palate-keys/src/haptics.js',
+  '/packages/palate-keys/src/aim.js',
+  '/packages/palate-keys/src/clips.js',
+  '/packages/palate-keys/src/shortcuts.js',
+  '/packages/palate-keys/src/storage.js',
+  '/packages/palate-keys/css/keyboard.css',
   '/js/organize/organizer.js',
   '/js/organize/heuristics.js',
   '/js/organize/prompt.js',
   '/js/organize/llm.js',
   '/js/organize/llm-worker.js',
   '/js/organize/diagnostics.js',
-  '/data/words-en.txt',
+  '/packages/palate-keys/data/words-en.txt',
   '/icons/icon.svg',
   '/manifest.json'
 ];

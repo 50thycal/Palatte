@@ -1,0 +1,487 @@
+/**
+ * palate-keys: keyboard styles.
+ *
+ * Theme it by overriding the --kb-* tokens on :root (or any ancestor).
+ * Dark mode follows the system, or force it with data-theme="dark" /
+ * data-theme="light" on <html>. --kb-h is set by the keyboard to its
+ * current height (0px when hidden): use it to lift your own UI.
+ */
+
+:root {
+  --kb-bg: #d3d5db;
+  --kb-key: #ffffff;
+  --kb-key-action: #acb1bb;
+  --kb-key-down: #c4c7ce;
+  --kb-text: #111111;
+  --kb-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --kb-accent: #0a84ff;          /* selection preview, paste chip */
+  --kb-hot: #3a6df0;             /* hotkey keys (custom actions) */
+  --kb-hot-text: #ffffff;
+  --kb-h: 0px;
+  --kb-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --kb-safe-top: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --kb-bg: #222224;
+    --kb-key: #5d5d61;
+    --kb-key-action: #3b3b3e;
+    --kb-key-down: #7a7a7f;
+    --kb-text: #ffffff;
+    --kb-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --kb-bg: #222224;
+  --kb-key: #5d5d61;
+  --kb-key-action: #3b3b3e;
+  --kb-key-down: #7a7a7f;
+  --kb-text: #ffffff;
+  --kb-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* ============ Palate Keys ============ */
+
+.pk {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: var(--kb-bg);
+  padding: 0 3px calc(4px + var(--kb-safe-bottom));
+  transform: translateY(100%);
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.pk.pk-visible { transform: translateY(0); }
+
+.pk-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  gap: 2px;
+}
+
+.pk-bar-btn {
+  flex: 0 0 auto;
+  min-width: 40px;
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--kb-text);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.pk-bar-btn:active { background: var(--kb-key-down); }
+
+.pk-preds {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  height: 100%;
+}
+
+.pk-pred {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--kb-text);
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  position: relative;
+  cursor: pointer;
+}
+
+.pk-pred + .pk-pred::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: var(--kb-key-action);
+}
+
+.pk-pred-primary { font-weight: 600; }
+.pk-pred:active, .pk-pred.pk-bar-down { background: var(--kb-key-down); border-radius: 8px; }
+.pk-bar-btn.pk-bar-down { background: var(--kb-key-down); }
+
+.pk-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 6px;
+  transition: opacity 0.15s;
+}
+
+.pk-row {
+  display: flex;
+  gap: 6px;
+  height: 44px;
+}
+
+.pk-row-inset {
+  padding: 0 5%;
+}
+
+.pk-key {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: var(--kb-key);
+  color: var(--kb-text);
+  border-radius: 6px;
+  box-shadow: var(--kb-shadow);
+  font-size: 23px;
+  line-height: 1;
+}
+
+.pk-key-action {
+  background: var(--kb-key-action);
+  font-size: 15px;
+}
+
+.pk-key-space {
+  background: var(--kb-key);
+  font-size: 15px;
+}
+
+.pk-key-down {
+  background: var(--kb-key-down);
+}
+
+.pk-key-action.pk-key-down {
+  background: var(--kb-key);
+}
+
+.pk-key-alt {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 10px;
+  opacity: 0.45;
+}
+
+.pk-key-label {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* Trackpad mode: keys fade, like iOS */
+.pk-trackpad .pk-rows { opacity: 0.35; }
+.pk-trackpad .pk-key-label,
+.pk-trackpad .pk-key-alt { visibility: hidden; }
+
+/* Key preview bubble */
+.pk-popup {
+  position: absolute;
+  display: none;
+  transform: translate(-50%, calc(-100% - 6px));
+  min-height: 54px;
+  padding: 0 6px;
+  align-items: center;
+  justify-content: center;
+  background: var(--kb-key);
+  color: var(--kb-text);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: 30px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pk-popup-on { display: flex; }
+.pk-popup-alt { font-size: 26px; }
+
+.pk-popup-accents {
+  gap: 0;
+  padding: 0;
+}
+
+.pk-accent {
+  width: 38px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border-radius: 8px;
+}
+
+.pk-accent-on {
+  background: var(--kb-accent);
+  color: #fff;
+}
+
+/* Touch diagnostics (Settings → Keyboard → Touch debug overlay) */
+.pk-debug {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+.pk-debug-raw,
+.pk-debug-fixed {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #ff3b30;
+}
+
+.pk-debug-fixed { border-color: #34c759; background: rgba(52, 199, 89, 0.35); }
+
+.pk-debug-info {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(8px + var(--kb-safe-top));
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font: 12px/1.4 ui-monospace, Menlo, monospace;
+}
+
+/* ============ Shift / caps lock states ============ */
+
+/* One-shot shift: key brightens like a pressed toggle */
+.pk-key-shift.pk-shift-once {
+  background: var(--kb-key);
+}
+
+/* Caps lock: bright key + a lit indicator, like a hardware keyboard LED */
+.pk-key-shift.pk-shift-lock {
+  background: var(--kb-key);
+  color: var(--kb-accent);
+}
+
+.pk-key-shift::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(127, 127, 127, 0.35);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.pk-key-shift.pk-shift-lock::after {
+  background: #34c759;
+  box-shadow: 0 0 6px 1px rgba(52, 199, 89, 0.85);
+}
+
+/* Wide preview bubble (swipe-down case change shows the new word) */
+.pk-popup-wide {
+  font-size: 22px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+/* ============ Select mode / clipboard ============ */
+
+.pk-bar { position: relative; }
+
+.pk-select.pk-on {
+  background: var(--kb-accent);
+  color: #fff;
+}
+
+.pk-bar-selecting .pk-preds {
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 6px;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.pk-bar-selecting .pk-preds::-webkit-scrollbar { display: none; }
+
+.pk-chip {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 16px;
+  background: var(--kb-key);
+  color: var(--kb-text);
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: var(--kb-shadow);
+  cursor: pointer;
+}
+
+.pk-chip.pk-bar-down { background: var(--kb-key-down); }
+
+.pk-action-info {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.75;
+  max-width: 76px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pk-bar-note {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kb-text);
+}
+
+.pk-pred-paste { color: var(--kb-accent); }
+
+.pk-clips {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: calc(100% + 6px);
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--kb-bg);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 3;
+}
+
+.pk-clips[hidden] { display: none; }
+
+.pk-clips-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--kb-text);
+  opacity: 0.6;
+  padding: 4px 6px;
+}
+
+.pk-clip {
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--kb-key);
+  color: var(--kb-text);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.pk-clip-system { color: var(--kb-accent); background: transparent; box-shadow: none; }
+
+.pk-sel-preview {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--kb-accent);
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Chip row scrolls sideways: fade whichever edge has more */
+.pk-preds.pk-more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.pk-preds.pk-more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
+.pk-preds.pk-more-left.pk-more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+/* ============ Hotkeys (host-defined keys) ============ */
+
+.pk-row-hot { height: 38px; }
+
+.pk-key-custom {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0 4px;
+}
+
+.pk-key-custom .pk-key-label { overflow: hidden; text-overflow: ellipsis; }
+
+.pk-key-hot {
+  background: var(--kb-hot);
+  color: var(--kb-hot-text);
+}
+
+.pk-key-hot.pk-key-down { background: var(--kb-hot); filter: brightness(1.25); }
+.pk-key-custom.pk-key-down { background: var(--kb-key-down); }
+.pk-key-custom.pk-key-hot.pk-key-down { background: var(--kb-hot); }
+
+/* ============ Compact: a phone held sideways ============ */
+/* A landscape phone is ~390px tall: keep the keyboard under half of it. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .pk { padding-bottom: calc(2px + var(--kb-safe-bottom)); }
+  .pk-bar { height: 32px; }
+  .pk-bar-btn { height: 28px; }
+  .pk-rows { gap: 5px; padding-bottom: 3px; }
+  .pk-row { height: 36px; gap: 5px; }
+  .pk-row-hot { height: 30px; }
+  .pk-key { font-size: 19px; }
+  .pk-key-custom { font-size: 13px; }
+  .pk-key-alt { font-size: 9px; top: 2px; }
+  .pk-pred { font-size: 15px; }
+}
+
+@media (orientation: landscape) and (max-height: 400px) {
+  .pk-row { height: 31px; }
+  .pk-row-hot { height: 27px; }
+  .pk-key { font-size: 17px; }
+}
+
+/* A hotkey with a swipe-up hint: the hint sits above the label, not on it */
+.pk-key-custom .pk-key-alt {
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 9px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+.pk-key-has-alt .pk-key-label { margin-top: 7px; }

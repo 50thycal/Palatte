@@ -9,6 +9,7 @@ Subtitles are conversational, which suits note-taking better than news text.
   curl -sSfLo /tmp/en50k.txt https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_50k.txt
   python3 scripts/build-dictionary.py /tmp/en50k.txt
 """
+import os
 import re
 import sys
 
@@ -51,7 +52,7 @@ def main(path):
         if len(words) >= SIZE:
             break
 
-    with open('data/words-en.txt', 'w', encoding='utf8') as f:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'words-en.txt'), 'w', encoding='utf8') as f:
         f.write('\n'.join(words) + '\n')
     print(f'wrote {len(words)} words')
 
