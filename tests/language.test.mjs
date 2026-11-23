@@ -67,3 +67,10 @@ test('correction is fast enough to run per word', () => {
   const per = (performance.now() - t) / 50;
   assert.ok(per < 15, `${per.toFixed(1)}ms per correction`);
 });
+
+test('sentence starters can be set by the host and reset', async () => {
+  lang.setStarters(['Good', 'Works', 'Make']);
+  assert.deepEqual(await lang.nextWords([], 3, true), ['Good', 'Works', 'Make']);
+  lang.setStarters(null);
+  assert.equal((await lang.nextWords([], 1, true))[0], 'I');
+});
