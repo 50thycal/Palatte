@@ -1,10 +1,10 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import * as lang from '../js/keyboard/language.js';
+import * as lang from '../packages/palate-keys/src/language.js';
 
 before(() => {
-  lang.setDictionary(readFileSync(new URL('../data/words-en.txt', import.meta.url), 'utf8').split('\n'));
+  lang.setDictionary(readFileSync(new URL('../packages/palate-keys/data/words-en.txt', import.meta.url), 'utf8').split('\n'));
 });
 
 test('fixes common typos', () => {

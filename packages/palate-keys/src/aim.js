@@ -8,7 +8,9 @@
  * to each key's learned centre instead of its drawn centre.
  */
 
-const STORE_KEY = 'palate_aim';
+import * as storage from './storage.js';
+
+const STORE_KEY = 'aim';
 const MIN_SAMPLES = 12;     // per key before its offset is used
 const MAX_OFFSET = 0.35;    // never shift a key's centre more than this
 const ALPHA = 0.06;         // moving-average weight of a normal tap
@@ -16,20 +18,16 @@ const ALPHA = 0.06;         // moving-average weight of a normal tap
 let model = load();
 
 function load() {
-  try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {};
-  } catch {
-    return {};
-  }
+  const m = storage.read(STORE_KEY, {});
+  return m && typeof m === 'object' ? m : {};
 }
+storage.onConfigure(() => { model = load(); });
 
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(model));
-    } catch { /* storage unavailable */ }
+    storage.write(STORE_KEY, model);
   }, 800);
 }
 
@@ -74,9 +72,7 @@ export function stats() {
 
 export function reset() {
   model = {};
-  try {
-    localStorage.removeItem(STORE_KEY);
-  } catch { /* ignore */ }
+  storage.remove(STORE_KEY);
 }
 
 // For tests

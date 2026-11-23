@@ -163,13 +163,13 @@ assert.ok(!learned.includes(';d'), 'undoing a shortcut does not learn it as a wo
 await setText('', 0);
 const g = await keyCentre('g');
 const between = { x: g.x + g.w * 0.45, y: g.y };
-await page.evaluate(async () => (await import('/js/keyboard/aim.js')).reset());
+await page.evaluate(async () => (await import('/packages/palate-keys/src/aim.js')).reset());
 await page.touchscreen.tap(between.x, between.y);
 await page.waitForTimeout(60);
 const withoutAim = (await value()).toLowerCase();
 await setText('', 0);
 await page.evaluate(async () => {
-  const aim = await import('/js/keyboard/aim.js');
+  const aim = await import('/packages/palate-keys/src/aim.js');
   aim.reset();
   // This person hits "h" well left of its centre
   for (let i = 0; i < 40; i++) aim.record('h', -0.6, 0);
@@ -181,13 +181,13 @@ assert.equal(withoutAim, 'g', 'default: the drawn key wins');
 assert.equal(withAim, 'h', 'learned aim: the key they mean wins');
 
 // Backspace-and-retype teaches the intended key
-await page.evaluate(async () => (await import('/js/keyboard/aim.js')).reset());
+await page.evaluate(async () => (await import('/packages/palate-keys/src/aim.js')).reset());
 await setText('', 0);
 await tap('f');
 await tap('bs');
-const before = await page.evaluate(async () => (await import('/js/keyboard/aim.js')).stats().taps);
+const before = await page.evaluate(async () => (await import('/packages/palate-keys/src/aim.js')).stats().taps);
 await tap('g');
-const after = await page.evaluate(async () => (await import('/js/keyboard/aim.js')).stats().taps);
+const after = await page.evaluate(async () => (await import('/packages/palate-keys/src/aim.js')).stats().taps);
 assert.equal(after - before, 2, 'retype recorded the miss and the new tap');
 
 // The bar names a long selection (iOS may not paint the highlight)

@@ -62,7 +62,10 @@ export function setContextSource(fn) {
   contextSource = fn;
 }
 
-export async function loadDictionary(url = '/data/words-en.txt') {
+/** Default: the word list shipped inside this package, resolved next to this file */
+export const DEFAULT_DICTIONARY_URL = new URL('../data/words-en.txt', import.meta.url).href;
+
+export async function loadDictionary(url = DEFAULT_DICTIONARY_URL) {
   const res = await fetch(url);
   if (!res.ok) throw new Error('dictionary ' + res.status);
   setDictionary((await res.text()).split('\n').map((w) => w.trim()));

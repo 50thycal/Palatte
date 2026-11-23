@@ -5,6 +5,10 @@
  * never opens; focus, caret and selection stay native. This module owns the
  * bottom of the screen while such a field is focused and edits it with
  * execCommand('insertText'), which keeps the native undo stack intact.
+ *
+ * Host apps can add their own keys on top of the typing keyboard: a hotkey
+ * strip (setHotkeys), whole extra layers (registerLayout), text shortcuts
+ * (setShortcuts) and fully custom key actions. See the package README.
  */
 
 import { LAYOUTS, ACCENTS } from './layouts.js';
@@ -13,6 +17,7 @@ import * as haptics from './haptics.js';
 import * as aim from './aim.js';
 import * as clips from './clips.js';
 import * as shortcuts from './shortcuts.js';
+import * as storage from './storage.js';
 
 const LONG_PRESS_MS = 380;
 const BAR_DRAG_PX = 8;          // finger travel before a bar touch becomes a scroll
@@ -52,6 +57,8 @@ const s = {
   pending: null,           // { word, corr } computed while typing
   slots: [],
   action: null,            // { label, onTap } shown at the right of the bar
+  hotkeys: new Map(),      // set name -> [hotkey]; a field picks one with data-pk-hotkeys
+  hotkeyLayers: ['letters'],
   autocorrect: true,
   predSeq: 0,
   predFrame: 0,
@@ -73,11 +80,36 @@ const s = {
 // Public API
 // ============================================
 
-export function init({ mode = 'auto', autocorrect = true, haptics: hap = true, onLearn, onVisibility } = {}) {
+/**
+ * options:
+ *   mode            'auto' (touch screens only) | 'always' | 'off'
+ *   autocorrect, haptics, onLearn(words), onVisibility(visible)
+ *   dictionary      URL of the word list; false to skip loading one
+ *                   (default: the list shipped in this package)
+ *   storage         { getItem, setItem, removeItem } for learned aim and clips
+ *   storagePrefix   key prefix inside that storage (default 'palate_')
+ *   layouts         { name: rows } extra layers, reachable with a layer key
+ *   hotkeys         [hotkey] for every field, or { setName: [hotkey] }
+ *   hotkeyLayers    layers that show the hotkey strip (default ['letters'])
+ */
+export function init({
+  mode = 'auto', autocorrect = true, haptics: hap = true, onLearn, onVisibility,
+  dictionary, storage: backend, storagePrefix, layouts, hotkeys, hotkeyLayers
+} = {}) {
+  if (backend !== undefined || storagePrefix !== undefined) storage.configure({ storage: backend, prefix: storagePrefix });
   s.autocorrect = autocorrect;
   s.onLearn = onLearn || s.onLearn;
   s.onVisibility = onVisibility || s.onVisibility;
   haptics.setEnabled(hap);
+  if (layouts) Object.entries(layouts).forEach(([name, rows]) => { LAYOUTS[name] = rows; });
+  if (hotkeyLayers) s.hotkeyLayers = hotkeyLayers;
+  if (Array.isArray(hotkeys)) s.hotkeys.set('default', hotkeys);
+  else if (hotkeys) Object.entries(hotkeys).forEach(([name, list]) => s.hotkeys.set(name, list));
+  if (dictionary !== false) {
+    lang.loadDictionary(typeof dictionary === 'string' ? dictionary : undefined)
+      .then(() => refresh())
+      .catch((err) => console.warn('[keys] dictionary', err));
+  }
   build();
   setMode(mode);
 
@@ -151,6 +183,28 @@ export function setShortcuts(list) {
 
 export function clearClips() {
   clips.clear();
+}
+
+/**
+ * Replace a hotkey set. setHotkeys(list) sets the default set (shown for every
+ * field); setHotkeys('chat', list) sets a named one, shown for fields marked
+ * data-pk-hotkeys="chat". An empty list removes the strip for that set.
+ */
+export function setHotkeys(nameOrList, maybeList) {
+  const [name, list] = Array.isArray(nameOrList) ? ['default', nameOrList] : [nameOrList, maybeList];
+  s.hotkeys.set(name, list || []);
+  if (s.visible) renderKeys();
+}
+
+/** Add or replace a whole layer. Reach it with { action: 'layer', to: name, label } */
+export function registerLayout(name, rows) {
+  LAYOUTS[name] = rows;
+  if (s.layer === name && s.visible) renderKeys();
+}
+
+/** Show a short note in the prediction bar ("Copied") */
+export function flash(text) {
+  flashNote(text);
 }
 
 export function isEnabled() {
@@ -372,6 +426,7 @@ function keyLabel(def) {
     const hint = s.target?.enterKeyHint;
     return hint && hint !== 'enter' ? hint : (s.target?.tagName === 'INPUT' ? 'done' : 'return');
   }
+  if (def.action === 'custom') return escapeHtml(String(def.label));
   if (def.action) return def.label;
   return displayChar(def.k);
 }
@@ -380,25 +435,60 @@ function displayChar(ch) {
   return s.layer === 'letters' && s.shift !== 'off' ? ch.toUpperCase() : ch;
 }
 
+/**
+ * Hotkey -> key def. A hotkey is { label, insert?, run?(ctx), alt?, hold?, w?,
+ * style? } or { label, layer } to jump to a layer. alt (swipe up) and hold
+ * (long press) take a string to insert or { label, insert?, run? }.
+ */
+function customDef(h) {
+  if (h.layer) return { action: 'layer', to: h.layer, label: escapeHtml(h.label ?? h.layer), w: h.w };
+  const sub = (v) => (v == null ? null : typeof v === 'string' ? { label: v, insert: v } : v);
+  return {
+    action: 'custom',
+    label: h.label ?? h.insert ?? '',
+    title: h.title,
+    w: h.w,
+    plain: h.style === 'plain',
+    insert: h.insert,
+    run: h.run,
+    alt: sub(h.alt),
+    hold: sub(h.hold)
+  };
+}
+
 function normaliseDef(def) {
-  return typeof def === 'string' ? { k: def } : def;
+  if (typeof def === 'string') return { k: def };
+  if (!def.action && !def.k && (def.label !== undefined || def.insert !== undefined || def.run || def.layer)) return customDef(def);
+  return def;
+}
+
+function activeHotkeys() {
+  const list = s.hotkeys.get(s.target?.dataset?.pkHotkeys || 'default');
+  return list && list.length && s.hotkeyLayers.includes(s.layer) ? list : null;
 }
 
 function renderKeys() {
-  const rows = LAYOUTS[s.layer];
+  const hot = activeHotkeys();
+  const rows = hot ? [hot, ...LAYOUTS[s.layer]] : LAYOUTS[s.layer];
+  const first = hot ? 1 : 0; // index of the first typing row
   s.keys = [];
   s.rowsEl.innerHTML = '';
   rows.forEach((row, r) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'pk-row';
     // Middle letter row is inset by half a key, like a physical keyboard
-    if (s.layer === 'letters' && r === 1) rowEl.classList.add('pk-row-inset');
+    if (s.layer === 'letters' && r === first + 1) rowEl.classList.add('pk-row-inset');
+    if (hot && r === 0) rowEl.classList.add('pk-row-hot');
     row.map(normaliseDef).forEach((def) => {
       const el = document.createElement('div');
-      el.className = 'pk-key' + (def.action ? ` pk-key-action pk-key-${def.action}` : '');
+      const custom = def.action === 'custom';
+      el.className = 'pk-key' + (def.action ? ` pk-key-action pk-key-${def.action}` : '') +
+        (custom && !def.plain ? ' pk-key-hot' : '');
+      if (custom && def.title) el.setAttribute('aria-label', def.title);
       el.style.flexGrow = def.w || 1;
+      const altLabel = custom ? def.alt?.label : (def.alt && s.layer === 'letters' ? def.alt : '');
       el.innerHTML = `<span class="pk-key-label">${keyLabel(def)}</span>` +
-        (def.alt && s.layer === 'letters' ? `<span class="pk-key-alt">${def.alt}</span>` : '');
+        (altLabel ? `<span class="pk-key-alt">${custom ? escapeHtml(String(altLabel)) : altLabel}</span>` : '');
       rowEl.appendChild(el);
       s.keys.push({ el, def, rect: null, row: r });
     });
@@ -557,6 +647,8 @@ function onDown(e) {
   if (!a) {
     showPopup(key, displayChar(key.def.k));
     t.timer = setTimeout(() => startAccents(t), LONG_PRESS_MS);
+  } else if (a === 'custom') {
+    if (key.def.hold) t.timer = setTimeout(() => fireHold(t), LONG_PRESS_MS);
   } else if (a === 'space') {
     t.timer = setTimeout(() => startTrackpad(t), LONG_PRESS_MS);
   } else if (a === 'backspace') {
@@ -594,6 +686,24 @@ function onMove(e) {
       t.swipes++;
       deleteWord();
       haptics.tick();
+    }
+    return;
+  }
+
+  if (a === 'custom') {
+    const alt = t.key.def.alt;
+    if (alt && t.mode !== 'fired') {
+      if (dy < -SWIPE_UP_PX && Math.abs(dy) > Math.abs(dx)) {
+        if (t.mode !== 'alt') {
+          t.mode = 'alt';
+          clearTimers(t);
+          showPopup(t.key, alt.label ?? '', true);
+        }
+      } else if (t.mode === 'alt' && dy > -SWIPE_UP_PX / 2) {
+        t.mode = 'tap';
+        hidePopup();
+        if (t.key.def.hold) t.timer = setTimeout(() => fireHold(t), LONG_PRESS_MS);
+      }
     }
     return;
   }
@@ -737,6 +847,10 @@ function commit(t) {
     case 'enter':
       typeEnter();
       break;
+    case 'custom':
+      if (t.mode === 'alt') runCustom(def.alt);
+      else if (t.mode !== 'fired') runCustom(def);
+      break;
     case 'undo':
       document.execCommand('undo');
       break;
@@ -748,12 +862,73 @@ function commit(t) {
   }
 }
 
+function fireHold(t) {
+  if (t.mode !== 'tap') return;
+  t.mode = 'fired';
+  haptics.tick();
+  hidePopup();
+  runCustom(t.key.def.hold);
+}
+
+/**
+ * Run a hotkey action: spec is { insert?, run?(ctx) }
+ */
+function runCustom(spec) {
+  if (!spec || !s.target) return;
+  s.revert = null;
+  s.autoSpace = false;
+  s.lastKey = 'hotkey';
+  try {
+    if (spec.insert != null) insertTemplate(spec.insert);
+    if (spec.run) spec.run(makeContext());
+  } catch (err) {
+    console.error('[keys] hotkey', err);
+  }
+  afterEdit();
+}
+
+/** Insert text with {date}-style fills and an optional {cursor} marker */
+function insertTemplate(template) {
+  const text = shortcuts.fill(String(template));
+  const at = text.indexOf('{cursor}');
+  if (at < 0) {
+    insert(text);
+    return;
+  }
+  const start = s.target.selectionStart;
+  insert(text.replace('{cursor}', ''));
+  setCaret(start + at);
+}
+
+/** The editing surface handed to a hotkey's run(ctx) */
+function makeContext() {
+  const el = s.target;
+  return {
+    el,
+    get text() { return el.value; },
+    get caret() { return el.selectionEnd; },
+    get selection() {
+      return { start: el.selectionStart, end: el.selectionEnd, text: el.value.slice(el.selectionStart, el.selectionEnd) };
+    },
+    insert: (text) => insertTemplate(text),
+    replace: (start, end, text) => replaceRange(start, end, text),
+    replaceAll: (text) => replaceRange(0, el.value.length, text),
+    clear: () => replaceRange(0, el.value.length, ''),
+    setCaret: (pos) => setCaret(pos),
+    backspace: () => backspace(),
+    submit: () => typeEnter(),
+    setLayer: (name) => setLayer(name),
+    flash: (text) => flashNote(text),
+    hide: () => el.blur()
+  };
+}
+
 function press(key, on) {
   key.el.classList.toggle('pk-key-down', on);
 }
 
 function showPopup(key, text, alt = false, wide = false) {
-  if (key.def.action || !key.rect) return;
+  if ((key.def.action && key.def.action !== 'custom') || !key.rect) return;
   const r = key.rect;
   const rootRect = s.root.getBoundingClientRect();
   s.popupEl.className = 'pk-popup pk-popup-on' + (alt ? ' pk-popup-alt' : '') + (wide ? ' pk-popup-wide' : '');

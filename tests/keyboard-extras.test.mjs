@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as aim from '../js/keyboard/aim.js';
-import * as shortcuts from '../js/keyboard/shortcuts.js';
-import * as clips from '../js/keyboard/clips.js';
+import * as aim from '../packages/palate-keys/src/aim.js';
+import * as shortcuts from '../packages/palate-keys/src/shortcuts.js';
+import * as clips from '../packages/palate-keys/src/clips.js';
 
 test('aim offsets apply only after enough samples and stay bounded', () => {
   aim.reset();

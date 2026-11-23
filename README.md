@@ -48,11 +48,13 @@ DATABASE_URL=postgres://… PALATE_TOKEN=dev npm run dev   # http://localhost:30
 TEST_DATABASE_URL=postgres://… npm test                  # API + keyboard + export tests
 node tests/e2e/keyboard.e2e.mjs                          # needs the dev server + Playwright
 node tests/e2e/select.e2e.mjs                            # selection, clipboard, shortcuts, aim
+node tests/e2e/hotkeys.e2e.mjs                           # host-defined hotkeys, layers, per-field sets
 ```
 
 There's no build step: `index.html` loads ES modules from `js/`, and `api/` holds
 the Vercel functions. The architecture and sync protocol are in
-[`docs/PLAN.md`](docs/PLAN.md). Rebuild the keyboard dictionary with
-`scripts/build-dictionary.py`. `vendor/web-llm` is the unmodified
+[`docs/PLAN.md`](docs/PLAN.md). The keyboard is its own package in
+[`packages/palate-keys`](packages/palate-keys/README.md) (reused by other apps and games). Rebuild the keyboard dictionary with
+`packages/palate-keys/build-dictionary.py`. `vendor/web-llm` is the unmodified
 `@mlc-ai/web-llm` build (Apache-2.0). Model weights download from Hugging Face
 on first use and are cached by the browser.
