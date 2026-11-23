@@ -486,7 +486,9 @@ function displayChar(ch) {
  */
 function customDef(h) {
   if (h.layer) return { action: 'layer', to: h.layer, label: escapeHtml(h.label ?? h.layer), w: h.w };
-  const sub = (v) => (v == null ? null : typeof v === 'string' ? { label: v, insert: v } : v);
+  // A string alt/hold inserts itself; its hint is a short form of it
+  const short = (v) => { const w = v.trim(); return w.length > 6 ? `${w.slice(0, 5)}…` : w; };
+  const sub = (v) => (v == null ? null : typeof v === 'string' ? { label: short(v), insert: v } : v);
   return {
     action: 'custom',
     label: h.label ?? h.insert ?? '',
@@ -527,7 +529,7 @@ function renderKeys() {
       const el = document.createElement('div');
       const custom = def.action === 'custom';
       el.className = 'pk-key' + (def.action ? ` pk-key-action pk-key-${def.action}` : '') +
-        (custom && !def.plain ? ' pk-key-hot' : '');
+        (custom && !def.plain ? ' pk-key-hot' : '') + (custom && def.alt ? ' pk-key-has-alt' : '');
       if (custom && def.title) el.setAttribute('aria-label', def.title);
       el.style.flexGrow = def.w || 1;
       const altLabel = custom ? def.alt?.label : (def.alt && s.layer === 'letters' ? def.alt : '');

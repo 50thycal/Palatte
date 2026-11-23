@@ -473,3 +473,15 @@
   .pk-row-hot { height: 27px; }
   .pk-key { font-size: 17px; }
 }
+
+/* A hotkey with a swipe-up hint: the hint sits above the label, not on it */
+.pk-key-custom .pk-key-alt {
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 9px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+.pk-key-has-alt .pk-key-label { margin-top: 7px; }
