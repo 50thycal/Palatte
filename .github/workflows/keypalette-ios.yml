@@ -1,0 +1,51 @@
+name: Key Palette iOS
+
+# Tests the keyboard engine and compiles the app and its keyboard extension for
+# the simulator, unsigned: no Apple account or secrets needed. Signing,
+# TestFlight and the App Store come later, when there is a developer account.
+
+on:
+  pull_request:
+    paths:
+      - 'keypalette/**'
+      - '.github/workflows/keypalette-ios.yml'
+  push:
+    branches: [claude/build-palate-app-jAX5x]
+    paths:
+      - 'keypalette/**'
+      - '.github/workflows/keypalette-ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: keypalette-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: keypalette
+    steps:
+      - uses: actions/checkout@v4
+      - name: Engine tests
+        run: swift test
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        run: xcodegen generate
+      - name: Build the app and the keyboard (simulator, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project KeyPalette.xcodeproj -scheme KeyPalette -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tail -n 120
+      - name: The keyboard extension is inside the app
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Debug-iphonesimulator/KeyPalette.app' -maxdepth 6 | head -1)
+          echo "$APP"
+          test -d "$APP/PlugIns/KeyPaletteKeyboard.appex"
+          plutil -p "$APP/PlugIns/KeyPaletteKeyboard.appex/Info.plist" | grep -E "keyboard-service|RequestsOpenAccess|PrimaryLanguage"
+          test -f "$APP/Resources/words-en.txt"
+          test -f "$APP/Resources/profiles/cargo-ship.json"
