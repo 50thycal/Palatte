@@ -81,7 +81,7 @@ JSON. Only `id` and `name` are required.
 - A hotkey with `alt` gets a swipe-up, with `hold` a long press.
 - `phraseFixes` are case-insensitive regular expressions (`$1` for groups).
 
-`Resources/profiles/cargo-ship.json` is generated from the Straitwatch game's note
+`Data/profiles/cargo-ship.json` is generated from the Straitwatch game's note
 keyboard (its vocabulary from the game data, the phrase model from 201 playtest
 notes, its typo and dictation fixes). Because a profile is plain JSON, a project can
 export its own.

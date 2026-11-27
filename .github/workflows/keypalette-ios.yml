@@ -63,8 +63,8 @@ jobs:
           echo "$APP"
           test -d "$APP/PlugIns/KeyPaletteKeyboard.appex"
           plutil -p "$APP/PlugIns/KeyPaletteKeyboard.appex/Info.plist" | grep -E "keyboard-service|RequestsOpenAccess|PrimaryLanguage"
-          test -f "$APP/Resources/words-en.txt"
-          test -f "$APP/Resources/profiles/cargo-ship.json"
+          test -f "$APP/Data/words-en.txt"
+          test -f "$APP/Data/profiles/cargo-ship.json"
       - name: Speed budget (release build)
         # Autocorrect runs on every keystroke: a correction must stay under 15 ms
         # in the optimised build that ships.

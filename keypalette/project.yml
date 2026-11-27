@@ -25,8 +25,10 @@ targets:
     platform: iOS
     sources:
       - path: App
-      # The word list and the bundled profiles, kept as a folder so the paths stay
-      - path: Resources
+      # The word list and the bundled profiles, kept as a folder so the paths stay.
+      # Not named "Resources": a root-level Resources folder makes Apple's bundle code
+      # look for Resources/Info.plist, and the extension fails validation.
+      - path: Data
         type: folder
     dependencies:
       - target: KeyPaletteKeyboard
@@ -56,7 +58,7 @@ targets:
     platform: iOS
     sources:
       - path: Keyboard
-      - path: Resources
+      - path: Data
         type: folder
     dependencies:
       - package: KeyPaletteKit

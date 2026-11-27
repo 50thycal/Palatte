@@ -18,7 +18,7 @@ your own **hotkey** row. Swipe up on any key for its number or symbol.
 | `Sources/KeyPaletteUI` | The UIKit keyboard view, shared by the extension and the app's playground. |
 | `Keyboard/` | The keyboard extension (`UIInputViewController`). |
 | `App/` | The container app (SwiftUI): setup, profiles, a playground. |
-| `Resources/` | The English word list and the bundled profiles. |
+| `Data/` | The English word list and the bundled profiles. |
 | `project.yml` | The Xcode project, generated with XcodeGen. |
 
 ## Build and test

@@ -91,7 +91,7 @@ final class KeyboardViewController: UIInputViewController, KeyboardHost {
 
     private func loadProfiles() -> [Profile] {
         var list = store.profiles()
-        if list.isEmpty, let dir = Bundle.main.url(forResource: "profiles", withExtension: nil, subdirectory: "Resources") {
+        if list.isEmpty, let dir = Bundle.main.url(forResource: "profiles", withExtension: nil, subdirectory: "Data") {
             // No shared container yet (an unsigned build, or the app hasn't run): use what's bundled
             list = ProfileStore.profiles(in: dir)
         }
@@ -99,7 +99,7 @@ final class KeyboardViewController: UIInputViewController, KeyboardHost {
     }
 
     private static func loadWords() -> [String] {
-        guard let url = Bundle.main.url(forResource: "words-en", withExtension: "txt", subdirectory: "Resources"),
+        guard let url = Bundle.main.url(forResource: "words-en", withExtension: "txt", subdirectory: "Data"),
               let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         return text.split(separator: "\n").map(String.init)
     }

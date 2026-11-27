@@ -1,14 +1,14 @@
 import XCTest
 @testable import KeyPaletteCore
 
-/// The Cargo Ship profile shipped in Resources/profiles, generated from the
+/// The Cargo Ship profile shipped in Data/profiles, generated from the
 /// game's own data (its note keyboard). These are the same checks the game's
 /// JavaScript tests make, run through the Swift engine.
 final class BundledProfileTests: XCTestCase {
     static let profile: Profile = {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Resources/profiles/cargo-ship.json")
+            .appendingPathComponent("Data/profiles/cargo-ship.json")
         return try! Profile.decode(Data(contentsOf: url))
     }()
 

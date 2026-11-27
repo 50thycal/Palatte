@@ -19,14 +19,14 @@ final class AppModel: ObservableObject {
     let words: [String]
 
     init() {
-        if let url = Bundle.main.url(forResource: "words-en", withExtension: "txt", subdirectory: "Resources"),
+        if let url = Bundle.main.url(forResource: "words-en", withExtension: "txt", subdirectory: "Data"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
             words = text.split(separator: "\n").map(String.init)
         } else {
             words = []
         }
         // The profiles that ship with the app, never over what you've edited
-        if let dir = Bundle.main.url(forResource: "profiles", withExtension: nil, subdirectory: "Resources") {
+        if let dir = Bundle.main.url(forResource: "profiles", withExtension: nil, subdirectory: "Data") {
             store.installMissing(from: dir)
         }
         reload()

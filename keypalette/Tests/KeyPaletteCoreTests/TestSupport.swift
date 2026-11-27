@@ -2,11 +2,11 @@ import Foundation
 @testable import KeyPaletteCore
 
 enum Fixtures {
-    /// The 30k-word English list shipped in Resources.
+    /// The 30k-word English list shipped in Data.
     static let words: [String] = {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Resources/words-en.txt")
+            .appendingPathComponent("Data/words-en.txt")
         let text = try! String(contentsOf: url, encoding: .utf8)
         return text.split(separator: "\n").map { String($0) }
     }()
