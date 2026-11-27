@@ -34,6 +34,8 @@ const BACKSPACE_SWIPE_PX = 34;
 const DOUBLE_SPACE_MS = 450;
 const DOUBLE_SHIFT_MS = 320;
 const TERMINATORS = '.,!?;:';
+const SYSTEM_KB_CHECK_MS = 700;  // how long to wait for the phone's keyboard before hinting
+const SYSTEM_HINT_MS = 7000;
 
 const s = {
   root: null,
@@ -59,6 +61,10 @@ const s = {
   action: null,            // { label, onTap } shown at the right of the bar
   watcher: null,           // MutationObserver: is the field still in the page?
   switching: null,         // field being handed to the system keyboard
+  sysTimer: 0,             // checks the phone's keyboard really opened
+  hintEl: null,            // "tap the box" pill when it didn't
+  hintTimer: 0,
+  systemHint: 'Tap the text box, then the 🎤 on the iPhone keyboard',
   hotkeys: new Map(),      // set name -> [hotkey]; a field picks one with data-pk-hotkeys
   hotkeyLayers: ['letters'],
   autocorrect: true,
@@ -96,8 +102,9 @@ const s = {
  */
 export function init({
   mode = 'auto', autocorrect = true, haptics: hap = true, onLearn, onVisibility,
-  dictionary, storage: backend, storagePrefix, layouts, hotkeys, hotkeyLayers
+  dictionary, storage: backend, storagePrefix, layouts, hotkeys, hotkeyLayers, systemKeyboardHint
 } = {}) {
+  if (systemKeyboardHint) s.systemHint = systemKeyboardHint;
   if (backend !== undefined || storagePrefix !== undefined) storage.configure({ storage: backend, prefix: storagePrefix });
   s.autocorrect = autocorrect;
   s.onLearn = onLearn || s.onLearn;
@@ -116,6 +123,8 @@ export function init({
   setMode(mode);
 
   document.addEventListener('focusin', (e) => {
+    reclaimStale(e.target);
+    if (e.target?.hasAttribute?.('data-pk-system')) hideSystemHint();
     pinScroll();
     requestAnimationFrame(pinScroll);
     setTimeout(pinScroll, 350);
@@ -246,17 +255,61 @@ function decorateField(el) {
  * Hand the focused field to the system keyboard (for dictation, or any
  * system feature the in-app keyboard can't do). Palate Keys takes the field
  * back as soon as it loses focus.
+ *
+ * iOS only opens its keyboard for a code-driven focus() made synchronously
+ * during a touch, so this runs from the key's touch-down. There is no way to
+ * ask iOS whether the keyboard opened, but it resizes the visual viewport
+ * when it does: if that didn't happen, show a hint to tap the box (a real tap
+ * always opens it, since the field no longer says inputmode="none").
  */
 function useSystemKeyboard() {
   const el = s.target;
   if (!el) return;
+  const vv = window.visualViewport;
+  const before = vv ? vv.height : window.innerHeight;
+  const { selectionStart: a, selectionEnd: b } = el;
   el.setAttribute('data-pk-system', '');
   decorateField(el);
   s.switching = el;
-  // Blur and refocus in the same tick, so it still counts as the user's tap
+  // Blur and refocus in the same tick, so it still counts as the user's touch
   el.blur();
-  el.focus();
+  el.focus({ preventScroll: true });
+  try { el.setSelectionRange(a, b); } catch { /* not a text field */ }
   s.switching = null;
+  clearTimeout(s.sysTimer);
+  s.sysTimer = setTimeout(() => {
+    if (!el.hasAttribute('data-pk-system')) return; // already done and reclaimed
+    const now = vv ? vv.height : window.innerHeight;
+    if (document.activeElement === el && now < before - 60) return; // the phone's keyboard is up
+    showSystemHint();
+  }, SYSTEM_KB_CHECK_MS);
+}
+
+function showSystemHint() {
+  if (!s.hintEl) {
+    s.hintEl = document.createElement('div');
+    s.hintEl.className = 'pk-hint';
+    s.hintEl.setAttribute('role', 'status');
+    document.body.appendChild(s.hintEl);
+  }
+  s.hintEl.textContent = s.systemHint;
+  s.hintEl.classList.add('pk-hint-on');
+  clearTimeout(s.hintTimer);
+  s.hintTimer = setTimeout(hideSystemHint, SYSTEM_HINT_MS);
+}
+
+function hideSystemHint() {
+  clearTimeout(s.hintTimer);
+  s.hintEl?.classList.remove('pk-hint-on');
+  reclaimStale();
+}
+
+/** Fields handed over that the system keyboard never took (or that lost focus
+ *  without a focusout): give them back to Palate Keys. */
+function reclaimStale(except = null) {
+  document.querySelectorAll('[data-pk-system]').forEach((f) => {
+    if (f !== except && f !== document.activeElement && s.switching !== f) reclaimField(f);
+  });
 }
 
 function reclaimField(el) {
@@ -496,6 +549,7 @@ function customDef(h) {
     w: h.w,
     plain: h.style === 'plain',
     insert: h.insert,
+    dictate: Boolean(h.dictate),
     run: h.dictate ? (ctx) => ctx.useSystemKeyboard() : h.run,
     alt: sub(h.alt),
     hold: sub(h.hold)
@@ -694,7 +748,12 @@ function onDown(e) {
     showPopup(key, displayChar(key.def.k));
     t.timer = setTimeout(() => startAccents(t), LONG_PRESS_MS);
   } else if (a === 'custom') {
-    if (key.def.hold) t.timer = setTimeout(() => fireHold(t), LONG_PRESS_MS);
+    if (key.def.dictate) {
+      // iOS opens its keyboard for a focus() call only while the finger is
+      // down (or just lifting): do the hand-off now, not on release.
+      t.mode = 'fired';
+      runCustom({ run: (ctx) => ctx.useSystemKeyboard() });
+    } else if (key.def.hold) t.timer = setTimeout(() => fireHold(t), LONG_PRESS_MS);
   } else if (a === 'space') {
     t.timer = setTimeout(() => startTrackpad(t), LONG_PRESS_MS);
   } else if (a === 'backspace') {
