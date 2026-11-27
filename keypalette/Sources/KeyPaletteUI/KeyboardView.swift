@@ -57,13 +57,15 @@ public final class KeyboardView: UIInputView, UIInputViewAudioFeedback {
     // MARK: Setup
 
     public init(brain: Brain, profiles: [Profile], activeProfileID: String?) {
+        let list = profiles.isEmpty ? [Profile.plain] : profiles
+        let index = list.firstIndex { $0.id == activeProfileID } ?? 0
         self.brain = brain
-        self.profiles = profiles.isEmpty ? [.plain] : profiles
-        self.activeProfileIndex = self.profiles.firstIndex { $0.id == activeProfileID } ?? 0
+        self.profiles = list
+        self.activeProfileIndex = index
         super.init(frame: .zero, inputViewStyle: .keyboard)
         allowsSelfSizing = true
         backgroundColor = Theme.background
-        brain.activate(self.profiles[activeProfileIndex])
+        brain.activate(list[index])
 
         addSubview(bar)
         chip.titleLabel?.font = .systemFont(ofSize: 18)
