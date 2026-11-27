@@ -35,6 +35,10 @@ create later are picked up with `decorate(root)`. Canvas games need a real
 text field behind the canvas: style an `<input data-pk>` as part of your UI.
 Use `enterkeyhint="send"` to relabel the return key.
 
+The keys keep out of the camera cut-out and the home indicator
+(`--kb-safe-left/right/bottom`, from `env(safe-area-inset-*)` by default; the page
+needs `viewport-fit=cover`). A host that measures the insets itself can set them.
+
 The keyboard sets `--kb-h` on `<html>` (its height, `0px` when hidden) and
 `html.pk-open` while it is up: use them to lift your own layout.
 
@@ -50,6 +54,7 @@ The keyboard sets `--kb-h` on `<html>` (its height, `0px` when hidden) and
 | `hotkeyLayers` | which layers show the strip (default `['letters']`) |
 | `layouts` | `{ name: rows }` extra layers |
 | `onLearn(word)`, `onVisibility(bool)` | callbacks |
+| `systemKeyboardHint` | text of the hint shown when a `dictate` key couldn't open the phone's keyboard (default: tap the text box, then the 🎤) |
 
 Runtime: `setMode`, `setAutocorrect`, `setHaptics`, `setHotkeys`,
 `registerLayout`, `setShortcuts`, `setAction`, `flash`, `decorate`, `refresh`.
@@ -74,6 +79,11 @@ setHotkeys([
 - `tap` = `insert` and/or `run(ctx)`; `alt` = swipe up; `hold` = long press.
   `alt`/`hold` are a string to insert or `{ label, insert?, run? }`.
 - `insert` text supports `{date} {time} {day} {iso}` and a `{cursor}` marker.
+- `{ label: '🎤', dictate: true }` hands the field to the phone's own keyboard
+  (for its dictation mic) and takes it back when the field loses focus. It
+  fires at touch-down because iOS only opens its keyboard for a code-driven
+  `focus()` while the finger is on the screen. If the phone keyboard didn't open
+  (the visual viewport didn't shrink), a hint says to tap the box.
 - `{ label, layer }` jumps to a layer. `style: 'plain'` drops the accent colour.
 - Per-field sets: `setHotkeys('chat', [...])` and `<input data-pk data-pk-hotkeys="chat">`.
   A field with no matching set shows no strip.

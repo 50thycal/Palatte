@@ -134,23 +134,68 @@ await page.locator('#palate-input').tap();
 await page.waitForTimeout(300);
 assert.equal(await page.$$eval('.pk-row-hot', (e) => e.length), 0, 'an unknown set shows no strip');
 
-// Dictation: the field is handed to the system keyboard, then reclaimed on blur
+// Dictation: the field is handed to the system keyboard (at touch-down, while the
+// finger is still on the key: iOS only opens its keyboard then), and reclaimed on blur
 await page.evaluate(() => document.querySelector('#palate-input').setAttribute('data-pk-hotkeys', 'default'));
 await page.evaluate(() => document.activeElement.blur());
 await page.waitForTimeout(100);
 await page.locator('#palate-input').tap();
 await page.waitForTimeout(300);
+await setText('hello world');
+await page.$eval('#palate-input', (el) => el.setSelectionRange(2, 5));
+
 const mic = await hot('Mic');
-await page.touchscreen.tap(mic.x, mic.y);
-await page.waitForTimeout(150);
-assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), true, 'dictate hands the field over');
+// Finger down only: no release yet
+await page.evaluate(({ x, y }) => {
+  document.querySelector('.pk-rows').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 77, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: x, clientY: y }));
+}, mic);
+assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), true, 'dictate hands the field over on touch-down, before the finger lifts');
 assert.equal(await page.$eval('#palate-input', (el) => el.getAttribute('inputmode')), null, 'system keyboard allowed');
 assert.equal(await page.$eval('#palate-input', (el) => document.activeElement === el), true, 'field keeps focus');
+assert.deepEqual(await page.$eval('#palate-input', (el) => [el.selectionStart, el.selectionEnd]), [2, 5], 'the selection survives the hand-over');
+// Pretend the phone's keyboard opened: iOS shrinks the visual viewport
+const vp = page.viewportSize();
+await page.setViewportSize({ width: vp.width, height: vp.height - 280 });
+await page.evaluate(({ x, y }) => {
+  document.querySelector('.pk-rows').dispatchEvent(new PointerEvent('pointerup', { pointerId: 77, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: x, clientY: y }));
+}, mic);
+await page.waitForTimeout(150);
 assert.equal(await page.$eval('.pk', (el) => el.classList.contains('pk-visible')), false, 'in-app keyboard steps aside');
+await page.waitForTimeout(900);
+assert.equal(await page.$('.pk-hint.pk-hint-on'), null, 'no hint when the phone keyboard opened');
 await page.evaluate(() => document.activeElement.blur());
 await page.waitForTimeout(150);
 assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), false, 'field is reclaimed on blur');
 assert.equal(await page.$eval('#palate-input', (el) => el.getAttribute('inputmode')), 'none', 'in-app keyboard is back');
+await page.setViewportSize(vp);
+
+// If the phone's keyboard does NOT open (iOS refused), say what to do
+await page.locator('#palate-input').tap();
+await page.waitForTimeout(300);
+const mic2 = await hot('Mic');
+await page.touchscreen.tap(mic2.x, mic2.y);
+await page.waitForTimeout(1000);
+assert.equal(await page.$eval('.pk-hint', (el) => el.classList.contains('pk-hint-on')), true, 'a hint appears when the keyboard did not open');
+assert.match(await page.$eval('.pk-hint', (el) => el.textContent), /Tap the text box/, 'the hint says what to do');
+await page.evaluate(() => document.activeElement.blur());
+await page.waitForTimeout(150);
+assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), false, 'reclaimed after the hint too');
+
+// A field handed over that never got focus is given back when another field is focused
+await page.evaluate(() => {
+  const other = document.createElement('textarea');
+  other.id = 'other-field';
+  other.setAttribute('data-pk', '');
+  other.style.cssText = 'position:fixed;top:60px;left:10px;width:200px;height:40px;z-index:5';
+  document.body.appendChild(other);
+  document.querySelector('#palate-input').setAttribute('data-pk-system', '');
+});
+await page.evaluate(() => document.activeElement.blur());
+await page.locator('#other-field').tap();
+await page.waitForTimeout(200);
+assert.equal(await page.$eval('#palate-input', (el) => el.hasAttribute('data-pk-system')), false, 'a stranded hand-over is reclaimed when another field is focused');
+await page.evaluate(() => { document.activeElement.blur(); document.querySelector('#other-field').remove(); });
+await page.waitForTimeout(100);
 
 // A field removed while focused (a dialog is replaced) takes the keyboard with it
 await page.locator('#palate-input').tap();
