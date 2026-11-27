@@ -17,6 +17,8 @@ final class AppModel: ObservableObject {
     @Published var profiles: [Profile] = []
     let store = ProfileStore.shared()
     let words: [String]
+    /// The language engine, for building profiles from text (loaded when first needed)
+    lazy var engine = LanguageEngine(words: words)
 
     init() {
         if let url = Bundle.main.url(forResource: "words-en", withExtension: "txt", subdirectory: "Data"),
