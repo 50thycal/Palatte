@@ -111,18 +111,26 @@ tested yet:
 8. **Height and the notch.** The view sizes itself from the vertical size class and
    keeps its keys inside the safe area. Check landscape on an island phone.
 
+## Built since the first version
+
+- **Profile from your own writing** (`ProfileBuilder`): paste notes, messages or a
+  draft (or pick a text file) and it keeps the words you use often and any names
+  (weighted by use, never corrected), the phrases you write twice or more, and how
+  you open sentences. Same method as the Straitwatch note keyboard's model. The
+  text is read on the phone and never leaves it.
+- **Hotkey editor in the app:** label, tap text, swipe-up and hold text, a Fix key,
+  reorder and delete.
+
 ## Not built yet (roadmap)
 
 1. Run it on a phone (needs the developer account: register the two bundle ids and
    the App Group `group.com.appfarm.keypalette`, then a TestFlight pipeline).
 2. Long-press accents, swipe-down case change, swipe-left word delete, key preview
    bubbles, learned tap aim (all exist in Palate Keys).
-3. Profile editing for hotkeys and the phrase model in the app (now: words and
-   shortcuts; the rest as JSON).
-4. Build a profile from your own writing (paste notes → vocabulary and phrases).
-5. Import and export profiles; a game exporting its own.
-6. A bigger dictionary, other languages.
-7. App Store assets, privacy policy (nothing is collected), pricing.
+3. Edit the phrase model by hand; import and export profiles from inside the app
+   (import exists; export doesn't); a game exporting its own.
+4. A bigger dictionary, other languages.
+5. App Store assets, privacy policy (nothing is collected), pricing.
 
 ## Decisions
 

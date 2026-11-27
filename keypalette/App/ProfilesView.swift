@@ -7,6 +7,7 @@ struct ProfilesView: View {
     @State private var importing = false
     @State private var importError: String?
     @State private var adding = false
+    @State private var building = false
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,7 @@ struct ProfilesView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
+                        Button("From my writing…", systemImage: "text.badge.plus") { building = true }
                         Button("New profile", systemImage: "plus") { adding = true }
                         Button("Import from file…", systemImage: "square.and.arrow.down") { importing = true }
                     } label: { Image(systemName: "plus") }
@@ -42,6 +44,9 @@ struct ProfilesView: View {
             .alert("Couldn't import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(importError ?? "") }
+            .sheet(isPresented: $building) {
+                BuildProfileView()
+            }
             .sheet(isPresented: $adding) {
                 NavigationStack {
                     ProfileEditor(profile: Profile(id: "profile-\(Int(Date().timeIntervalSince1970))", name: "New profile"), isNew: true)
@@ -51,8 +56,8 @@ struct ProfilesView: View {
     }
 }
 
-/// Edit a profile: its name, its words and its text shortcuts. (Hotkeys and the
-/// phrase model are edited as JSON for now; the file format is in docs/DESIGN.md.)
+/// Edit a profile: its name, words, text shortcuts and hotkeys. (The phrase model
+/// comes from "From my writing"; the file format is in docs/DESIGN.md.)
 struct ProfileEditor: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -60,6 +65,7 @@ struct ProfileEditor: View {
     var isNew = false
     @State private var wordsText = ""
     @State private var shortcutsText = ""
+    @State private var hotkeys: [EditableHotkey] = []
 
     var body: some View {
         Form {
@@ -73,17 +79,20 @@ struct ProfileEditor: View {
             Section(header: Text("Text shortcuts"), footer: Text("One per line: trigger = text. Type the trigger and a space to expand it. {date} {time} {cursor} work.")) {
                 TextEditor(text: $shortcutsText).frame(minHeight: 100).font(.body.monospaced())
             }
-            if !profile.hotkeys.isEmpty {
-                Section("Hotkeys") {
-                    ForEach(Array(profile.hotkeys.enumerated()), id: \.offset) { _, h in
+            Section(header: Text("Hotkeys"), footer: Text("The row of your own keys above the letters. Tap a key to edit it; swipe a row to delete; drag to reorder.")) {
+                ForEach($hotkeys) { $key in
+                    NavigationLink(destination: HotkeyForm(key: $key)) {
                         VStack(alignment: .leading) {
-                            Text(h.label).font(.headline)
-                            Text([h.insert, h.alt?.insert.map { "↑ \($0)" }, h.hold?.insert.map { "hold: \($0)" }]
-                                .compactMap { $0 }.joined(separator: "  ·  "))
-                                .font(.caption).foregroundStyle(.secondary)
+                            Text(key.label.isEmpty ? "(no label)" : key.label).font(.headline)
+                            if !key.summary.isEmpty {
+                                Text(key.summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            }
                         }
                     }
                 }
+                .onDelete { hotkeys.remove(atOffsets: $0) }
+                .onMove { hotkeys.move(fromOffsets: $0, toOffset: $1) }
+                Button("Add a hotkey", systemImage: "plus") { hotkeys.append(EditableHotkey()) }
             }
         }
         .navigationTitle(isNew ? "New profile" : profile.name)
@@ -91,11 +100,13 @@ struct ProfileEditor: View {
             wordsText = profile.words.sorted { $0.key < $1.key }
                 .map { $0.value == 3 ? $0.key : "\($0.key) \(Int($0.value))" }.joined(separator: "\n")
             shortcutsText = profile.shortcuts.map { "\($0.trigger) = \($0.expansion)" }.joined(separator: "\n")
+            hotkeys = profile.hotkeys.map(EditableHotkey.init)
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
             }
+            ToolbarItem(placement: .navigationBarLeading) { EditButton() }
             if isNew {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
@@ -117,6 +128,7 @@ struct ProfileEditor: View {
             let e = ShortcutEntry(trigger: halves[0], expansion: halves[1])
             return ShortcutTable.validate(e) == nil ? e : nil
         }
+        p.hotkeys = hotkeys.filter { !$0.label.trimmingCharacters(in: .whitespaces).isEmpty }.map(\.hotkey)
         model.save(p)
         dismiss()
     }
