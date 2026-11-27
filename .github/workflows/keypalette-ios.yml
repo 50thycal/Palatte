@@ -37,10 +37,22 @@ jobs:
         run: xcodegen generate
       - name: Build the app and the keyboard (simulator, unsigned)
         run: |
-          set -o pipefail
           xcodebuild -project KeyPalette.xcodeproj -scheme KeyPalette -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tail -n 120
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > "$RUNNER_TEMP/xcodebuild.log" 2>&1 \
+            && status=0 || status=$?
+          echo "xcodebuild exit status: $status"
+          # The full log is huge: show only what matters
+          grep -nE "error:|warning: .*(Info|plist)|BUILD (SUCCEEDED|FAILED)" "$RUNNER_TEMP/xcodebuild.log" | cut -c1-300 | head -40 || true
+          if [ "$status" != 0 ]; then
+            echo "--- Info.plist steps for the keyboard"
+            grep -n "ProcessInfoPlistFile.*KeyPaletteKeyboard" "$RUNNER_TEMP/xcodebuild.log" | cut -c1-400 | head -10 || true
+            echo "--- built extension folders"
+            find "$HOME/Library/Developer/Xcode/DerivedData" -name "KeyPaletteKeyboard.appex" -maxdepth 7 | while read -r d; do echo "$d"; ls -la "$d" | head -20; done
+            echo "--- generated Info.plist sources"
+            ls -la Keyboard App
+            exit "$status"
+          fi
       - name: The keyboard extension is inside the app
         run: |
           APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Debug-iphonesimulator/KeyPalette.app' -maxdepth 6 | head -1)
