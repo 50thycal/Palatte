@@ -49,8 +49,12 @@ jobs:
             grep -n "ProcessInfoPlistFile.*KeyPaletteKeyboard" "$RUNNER_TEMP/xcodebuild.log" | cut -c1-400 | head -10 || true
             echo "--- built extension folders"
             find "$HOME/Library/Developer/Xcode/DerivedData" -name "KeyPaletteKeyboard.appex" -maxdepth 7 | while read -r d; do echo "$d"; ls -la "$d" | head -20; done
-            echo "--- generated Info.plist sources"
-            ls -la Keyboard App
+            echo "--- the keyboard's generated Info.plist (source)"
+            cat Keyboard/Info.plist
+            echo "--- the built extension's Info.plist"
+            APPEX=$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*Debug-iphonesimulator/KeyPalette.app/PlugIns/KeyPaletteKeyboard.appex" -maxdepth 8 | head -1)
+            plutil -lint "$APPEX/Info.plist" || true
+            plutil -p "$APPEX/Info.plist" || true
             exit "$status"
           fi
       - name: The keyboard extension is inside the app
