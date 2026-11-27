@@ -1,0 +1,3232 @@
+{
+ "schema": 1,
+ "id": "cargo-ship",
+ "name": "Cargo Ship",
+ "icon": "⚓️",
+ "colorHex": "#17607A",
+ "words": {
+  "a": 145,
+  "able": 4,
+  "about": 11,
+  "across": 3,
+  "activate": 2,
+  "active": 2,
+  "actual": 3,
+  "actually": 11,
+  "add": 8,
+  "advantageous": 3,
+  "aegis": 3,
+  "after": 8,
+  "afterburner": 3,
+  "again": 5,
+  "age": 2,
+  "air": 3,
+  "aircraft": 3,
+  "airdrop": 3,
+  "airstrike": 3,
+  "all": 32,
+  "allowed": 3,
+  "alright": 2,
+  "also": 34,
+  "always": 5,
+  "ammo": 12,
+  "amount": 5,
+  "amp": 3,
+  "an": 13,
+  "and": 129,
+  "animation": 8,
+  "another": 5,
+  "any": 6,
+  "anything": 4,
+  "anywhere": 2,
+  "apart": 3,
+  "apex": 3,
+  "appear": 4,
+  "applies": 2,
+  "apply": 2,
+  "arc": 3,
+  "archipelago": 3,
+  "are": 22,
+  "arm": 3,
+  "arming": 3,
+  "armor": 3,
+  "armored": 3,
+  "around": 4,
+  "arsenal": 3,
+  "as": 31,
+  "at": 28,
+  "attack": 14,
+  "attacked": 2,
+  "attacking": 3,
+  "attacks": 3,
+  "audit": 4,
+  "auto": 3,
+  "away": 4,
+  "back": 14,
+  "bad": 8,
+  "balanced": 3,
+  "ball": 3,
+  "ballistic": 3,
+  "band": 3,
+  "banner": 2,
+  "basically": 3,
+  "battery": 3,
+  "battle": 3,
+  "be": 71,
+  "beacon": 3,
+  "beam": 3,
+  "because": 7,
+  "before": 11,
+  "begins": 2,
+  "behemoth": 3,
+  "being": 3,
+  "believe": 3,
+  "best": 5,
+  "better": 11,
+  "between": 2,
+  "biohazard": 3,
+  "bit": 11,
+  "black": 3,
+  "blackout": 3,
+  "blades": 3,
+  "blast": 3,
+  "bloom": 3,
+  "blow": 4,
+  "boat": 3,
+  "bodyguard": 3,
+  "boilers": 3,
+  "bombardment": 3,
+  "bomber": 3,
+  "bombers": 3,
+  "bomblet": 3,
+  "bomblets": 3,
+  "bombs": 3,
+  "bonus": 3,
+  "boomerang": 3,
+  "boost": 7,
+  "boosted": 2,
+  "boosts": 3,
+  "bosk": 3,
+  "boss": 10,
+  "both": 4,
+  "bottom": 7,
+  "box": 3,
+  "break": 4,
+  "breakout": 3,
+  "breath": 3,
+  "breather": 3,
+  "bringing": 3,
+  "broadside": 3,
+  "broken": 3,
+  "burn": 3,
+  "but": 61,
+  "button": 4,
+  "buttons": 2,
+  "by": 8,
+  "cadence": 3,
+  "call": 3,
+  "calm": 3,
+  "can": 29,
+  "can't": 4,
+  "canal": 3,
+  "cannon": 3,
+  "cannot": 2,
+  "cap": 3,
+  "card": 3,
+  "cards": 3,
+  "cargo": 3,
+  "carpet": 3,
+  "carrier": 3,
+  "categories": 2,
+  "categorize": 3,
+  "cause": 4,
+  "ceiling": 3,
+  "certain": 2,
+  "chance": 3,
+  "change": 6,
+  "changes": 2,
+  "charge": 3,
+  "circle": 3,
+  "circus": 3,
+  "citadel": 3,
+  "clean": 3,
+  "clear": 4,
+  "climb": 3,
+  "close": 4,
+  "cloud": 3,
+  "cluster": 3,
+  "clutch": 2,
+  "coil": 3,
+  "color": 2,
+  "column": 3,
+  "combo": 3,
+  "combos": 3,
+  "come": 15,
+  "comes": 5,
+  "coming": 8,
+  "command": 5,
+  "contact": 3,
+  "continue": 2,
+  "control": 3,
+  "convoy": 3,
+  "cooldown": 3,
+  "could": 11,
+  "covers": 2,
+  "coves": 3,
+  "crews": 3,
+  "crossing": 3,
+  "cruise": 3,
+  "current": 3,
+  "curtain": 3,
+  "cut": 3,
+  "cutter": 3,
+  "cuz": 3,
+  "daisy": 3,
+  "damage": 11,
+  "dark": 3,
+  "dart": 3,
+  "deadeye": 3,
+  "deck": 3,
+  "decoy": 3,
+  "decoys": 3,
+  "deep": 3,
+  "defense": 3,
+  "definitely": 3,
+  "delta": 3,
+  "destroyed": 2,
+  "developer": 2,
+  "did": 4,
+  "didn't": 7,
+  "difference": 3,
+  "different": 8,
+  "difficult": 2,
+  "direct": 3,
+  "direction": 2,
+  "directions": 2,
+  "distance": 2,
+  "dive": 3,
+  "do": 30,
+  "doable": 3,
+  "dock": 3,
+  "does": 14,
+  "doesn't": 15,
+  "doing": 4,
+  "don't": 9,
+  "done": 3,
+  "doubt": 2,
+  "down": 19,
+  "draft": 2,
+  "drag": 3,
+  "dragon": 3,
+  "dramatic": 2,
+  "dreadnought": 3,
+  "drifting": 3,
+  "driver": 3,
+  "drone": 9,
+  "drones": 10,
+  "drop": 12,
+  "drops": 3,
+  "drum": 3,
+  "dual": 3,
+  "dunmar": 3,
+  "duplicate": 3,
+  "duration": 2,
+  "during": 2,
+  "each": 6,
+  "ease": 3,
+  "easier": 2,
+  "easy": 5,
+  "edge": 3,
+  "either": 2,
+  "else": 4,
+  "encounter": 3,
+  "end": 3,
+  "enemies": 3,
+  "enemy": 17,
+  "escort": 3,
+  "especially": 3,
+  "essentially": 3,
+  "even": 12,
+  "event": 4,
+  "events": 4,
+  "eventually": 2,
+  "every": 6,
+  "everything": 6,
+  "existing": 2,
+  "expected": 3,
+  "explodes": 2,
+  "far": 3,
+  "fast": 4,
+  "fastboat": 3,
+  "faster": 3,
+  "feel": 6,
+  "few": 3,
+  "field": 3,
+  "fine": 3,
+  "finger": 2,
+  "fire": 7,
+  "firestorm": 3,
+  "firing": 2,
+  "first": 8,
+  "five": 2,
+  "fix": 3,
+  "fixed": 5,
+  "fixes": 3,
+  "flak": 3,
+  "flash": 3,
+  "flats": 3,
+  "flight": 3,
+  "focus": 3,
+  "follow": 2,
+  "for": 58,
+  "formation": 3,
+  "forth": 2,
+  "frac": 3,
+  "fragstorm": 3,
+  "freq": 3,
+  "frigate": 3,
+  "frigates": 3,
+  "from": 24,
+  "full": 5,
+  "fun": 14,
+  "fuse": 3,
+  "game": 8,
+  "games": 2,
+  "gap": 3,
+  "gate": 3,
+  "gateway": 3,
+  "gauntlet": 3,
+  "general": 4,
+  "generator": 3,
+  "get": 9,
+  "give": 3,
+  "go": 4,
+  "goes": 3,
+  "going": 5,
+  "gone": 2,
+  "gonna": 2,
+  "good": 44,
+  "grace": 3,
+  "grapnel": 3,
+  "grapple": 3,
+  "gravity": 3,
+  "great": 11,
+  "grid": 3,
+  "ground": 2,
+  "group": 3,
+  "guard": 3,
+  "guess": 4,
+  "guided": 3,
+  "gun": 3,
+  "guns": 3,
+  "gunship": 3,
+  "gunships": 3,
+  "had": 6,
+  "half": 3,
+  "happened": 2,
+  "happening": 2,
+  "harbor": 3,
+  "hard": 17,
+  "has": 4,
+  "hat": 2,
+  "hatch": 3,
+  "have": 51,
+  "having": 2,
+  "health": 3,
+  "heavy": 3,
+  "height": 3,
+  "held": 3,
+  "heli": 3,
+  "helicopter": 7,
+  "helicopters": 2,
+  "hellfire": 3,
+  "here": 10,
+  "hit": 8,
+  "hitbox": 3,
+  "hits": 7,
+  "hold": 5,
+  "holding": 2,
+  "home": 3,
+  "hook": 3,
+  "hornet": 3,
+  "how": 11,
+  "hull": 3,
+  "hydra": 3,
+  "hydras": 3,
+  "hyper": 3,
+  "i": 126,
+  "i'll": 3,
+  "i'm": 8,
+  "idea": 4,
+  "ideas": 2,
+  "if": 19,
+  "improve": 4,
+  "in": 50,
+  "inbound": 3,
+  "incendiary": 3,
+  "initial": 2,
+  "instead": 11,
+  "intercept": 3,
+  "into": 5,
+  "intro": 3,
+  "introduce": 2,
+  "invincibility": 3,
+  "is": 77,
+  "island": 3,
+  "isn't": 2,
+  "it": 207,
+  "it'll": 2,
+  "it's": 25,
+  "its": 3,
+  "jackpot": 3,
+  "jet": 3,
+  "jets": 2,
+  "jitter": 3,
+  "jittery": 3,
+  "just": 90,
+  "keep": 10,
+  "kesh": 3,
+  "kill": 2,
+  "kind": 20,
+  "kinda": 5,
+  "know": 9,
+  "lab": 5,
+  "labels": 2,
+  "lance": 3,
+  "land": 4,
+  "lane": 3,
+  "lantern": 3,
+  "large": 2,
+  "larger": 2,
+  "laser": 6,
+  "laserbeam": 3,
+  "last": 10,
+  "later": 4,
+  "launch": 3,
+  "launcher": 5,
+  "launchers": 3,
+  "lead": 3,
+  "least": 5,
+  "leave": 2,
+  "lee": 3,
+  "left": 10,
+  "len": 3,
+  "length": 3,
+  "less": 2,
+  "let": 2,
+  "let's": 5,
+  "level": 4,
+  "leveling": 3,
+  "levels": 2,
+  "life": 3,
+  "lifeboats": 3,
+  "lift": 3,
+  "light": 3,
+  "like": 86,
+  "limit": 3,
+  "line": 7,
+  "lines": 3,
+  "little": 25,
+  "live": 2,
+  "load": 3,
+  "loads": 3,
+  "lock": 3,
+  "lol": 2,
+  "long": 4,
+  "longload": 3,
+  "look": 12,
+  "looked": 2,
+  "looking": 3,
+  "looks": 6,
+  "loss": 3,
+  "lost": 2,
+  "lot": 14,
+  "low": 2,
+  "lower": 3,
+  "lure": 3,
+  "made": 4,
+  "magazine": 3,
+  "main": 3,
+  "make": 56,
+  "makes": 4,
+  "map": 14,
+  "maps": 8,
+  "marrow": 3,
+  "mass": 3,
+  "master": 3,
+  "match": 3,
+  "matter": 2,
+  "max": 3,
+  "maybe": 12,
+  "me": 6,
+  "meet": 3,
+  "mention": 2,
+  "might": 5,
+  "min": 3,
+  "mine": 4,
+  "mines": 5,
+  "mini": 3,
+  "minidrone": 3,
+  "missile": 12,
+  "missiles": 5,
+  "mission": 3,
+  "mixed": 3,
+  "mode": 2,
+  "more": 35,
+  "most": 3,
+  "mothership": 3,
+  "motion": 2,
+  "motor": 3,
+  "motors": 3,
+  "mouth": 3,
+  "move": 3,
+  "movement": 2,
+  "much": 9,
+  "mult": 3,
+  "multiple": 5,
+  "munitions": 7,
+  "my": 6,
+  "narrows": 3,
+  "natural": 2,
+  "near": 3,
+  "need": 28,
+  "needed": 4,
+  "needle": 3,
+  "needs": 13,
+  "nest": 3,
+  "new": 17,
+  "next": 5,
+  "night": 3,
+  "no": 3,
+  "none": 3,
+  "normal": 5,
+  "normally": 2,
+  "not": 59,
+  "note": 17,
+  "notes": 5,
+  "notification": 3,
+  "now": 13,
+  "nuke": 6,
+  "nukes": 3,
+  "obvious": 4,
+  "of": 83,
+  "off": 12,
+  "offscreen": 3,
+  "oil": 3,
+  "old": 2,
+  "on": 63,
+  "once": 15,
+  "one": 59,
+  "one's": 2,
+  "ones": 7,
+  "only": 8,
+  "onscreen": 3,
+  "op": 3,
+  "open": 3,
+  "opening": 3,
+  "option": 3,
+  "or": 38,
+  "orbital": 3,
+  "other": 18,
+  "our": 2,
+  "out": 17,
+  "outside": 2,
+  "over": 3,
+  "overall": 21,
+  "overclocked": 3,
+  "overdrive": 3,
+  "overlap": 2,
+  "overlapped": 3,
+  "overlaps": 3,
+  "own": 2,
+  "pace": 2,
+  "pack": 3,
+  "page": 2,
+  "pair": 3,
+  "pairs": 3,
+  "parade": 3,
+  "part": 3,
+  "pass": 3,
+  "passive": 5,
+  "passives": 3,
+  "path": 3,
+  "pause": 6,
+  "periscope": 3,
+  "perspective": 2,
+  "pick": 4,
+  "picked": 2,
+  "pickup": 3,
+  "pickups": 3,
+  "pieces": 3,
+  "pity": 3,
+  "plane": 5,
+  "planes": 4,
+  "plating": 3,
+  "play": 6,
+  "played": 2,
+  "player": 10,
+  "players": 4,
+  "playtest": 3,
+  "playtesting": 3,
+  "please": 3,
+  "pod": 3,
+  "point": 3,
+  "pointdef": 3,
+  "points": 3,
+  "power": 5,
+  "pretty": 6,
+  "prioritizing": 3,
+  "probably": 10,
+  "problem": 2,
+  "production": 3,
+  "projectile": 3,
+  "projectiles": 3,
+  "proximity": 3,
+  "pull": 4,
+  "purpose": 2,
+  "quartermaster": 3,
+  "question": 2,
+  "quick": 4,
+  "quicker": 5,
+  "quirk": 3,
+  "rack": 3,
+  "radar": 3,
+  "radius": 5,
+  "raid": 3,
+  "rail": 3,
+  "railgun": 3,
+  "rain": 3,
+  "raise": 3,
+  "raised": 2,
+  "ram": 3,
+  "ramming": 3,
+  "random": 4,
+  "randomly": 2,
+  "range": 3,
+  "ranking": 3,
+  "rate": 3,
+  "reach": 3,
+  "really": 21,
+  "rebalance": 3,
+  "receive": 3,
+  "recon": 2,
+  "red": 3,
+  "reflect": 3,
+  "reload": 3,
+  "reloading": 3,
+  "remove": 7,
+  "rename": 3,
+  "repair": 3,
+  "replace": 3,
+  "reset": 6,
+  "rest": 3,
+  "retain": 2,
+  "reticle": 3,
+  "retry": 3,
+  "rework": 5,
+  "reworked": 3,
+  "rig": 3,
+  "right": 16,
+  "rigs": 3,
+  "ring": 3,
+  "rocket": 3,
+  "rockets": 2,
+  "rotate": 3,
+  "round": 6,
+  "rounds": 6,
+  "row": 3,
+  "run": 6,
+  "runner": 3,
+  "runs": 3,
+  "rush": 3,
+  "said": 2,
+  "saltgate": 3,
+  "salvage": 3,
+  "salvo": 3,
+  "same": 9,
+  "save": 3,
+  "say": 14,
+  "saying": 3,
+  "scale": 3,
+  "scatter": 3,
+  "scattergun": 3,
+  "scavenger": 3,
+  "scenarios": 3,
+  "scorecard": 3,
+  "screen": 20,
+  "searing": 3,
+  "second": 3,
+  "seconds": 2,
+  "see": 8,
+  "seeker": 3,
+  "seem": 3,
+  "seems": 2,
+  "select": 2,
+  "sense": 6,
+  "separate": 3,
+  "set": 3,
+  "share": 3,
+  "sharra": 3,
+  "shell": 3,
+  "shield": 6,
+  "shields": 2,
+  "ship": 15,
+  "ships": 14,
+  "shoot": 4,
+  "shooting": 2,
+  "shore": 3,
+  "shot": 6,
+  "should": 90,
+  "shouldn't": 3,
+  "shrapnel": 3,
+  "side": 5,
+  "siege": 3,
+  "silo": 3,
+  "silos": 3,
+  "since": 2,
+  "singularity": 3,
+  "siren": 3,
+  "sky": 3,
+  "slightly": 3,
+  "slot": 3,
+  "slots": 3,
+  "slow": 10,
+  "slowdown": 3,
+  "slower": 2,
+  "small": 4,
+  "smugglers": 3,
+  "so": 63,
+  "some": 5,
+  "something": 8,
+  "sometimes": 3,
+  "sonic": 2,
+  "sowers": 3,
+  "sparingly": 3,
+  "spawn": 3,
+  "spear": 3,
+  "special": 7,
+  "specific": 3,
+  "speed": 3,
+  "speeds": 2,
+  "spill": 3,
+  "splash": 3,
+  "split": 3,
+  "splits": 3,
+  "spot": 3,
+  "spottable": 3,
+  "spotter": 3,
+  "spread": 3,
+  "sprint": 3,
+  "sprinter": 3,
+  "stage": 2,
+  "stand": 3,
+  "starshell": 3,
+  "start": 8,
+  "station": 3,
+  "stealth": 3,
+  "steam": 3,
+  "still": 17,
+  "stockpile": 3,
+  "storm": 3,
+  "strafe": 3,
+  "strafer": 3,
+  "strafers": 3,
+  "straight": 4,
+  "strait": 3,
+  "strike": 3,
+  "structure": 3,
+  "stuff": 2,
+  "sub": 3,
+  "submarine": 2,
+  "submarines": 2,
+  "sunspear": 3,
+  "supersonic": 3,
+  "supply": 3,
+  "sure": 21,
+  "surface": 3,
+  "survive": 3,
+  "swarm": 3,
+  "swarms": 3,
+  "swipe": 3,
+  "synergies": 3,
+  "synergy": 2,
+  "system": 2,
+  "tactical": 3,
+  "take": 7,
+  "takes": 2,
+  "tap": 7,
+  "target": 3,
+  "targets": 3,
+  "tell": 3,
+  "tender": 3,
+  "terminal": 3,
+  "tesla": 3,
+  "test": 11,
+  "testing": 3,
+  "text": 2,
+  "than": 7,
+  "that": 128,
+  "that's": 12,
+  "the": 404,
+  "their": 4,
+  "them": 10,
+  "then": 36,
+  "there": 17,
+  "there's": 6,
+  "thermo": 3,
+  "thermobaric": 3,
+  "these": 5,
+  "they": 24,
+  "they're": 2,
+  "thing": 9,
+  "things": 2,
+  "think": 43,
+  "thinking": 2,
+  "this": 72,
+  "tho": 5,
+  "those": 5,
+  "though": 2,
+  "three": 7,
+  "through": 3,
+  "throw": 2,
+  "tide": 3,
+  "tidewater": 3,
+  "time": 11,
+  "times": 2,
+  "timings": 3,
+  "to": 139,
+  "too": 37,
+  "top": 6,
+  "torpedo": 3,
+  "torpedoes": 6,
+  "trickle": 3,
+  "truck": 3,
+  "trucks": 7,
+  "try": 7,
+  "trying": 3,
+  "tuneable": 3,
+  "tuned": 3,
+  "turn": 4,
+  "turret": 3,
+  "tweak": 2,
+  "tweaking": 3,
+  "tweaks": 3,
+  "twin": 3,
+  "two": 12,
+  "unless": 2,
+  "unplayable": 3,
+  "until": 4,
+  "up": 34,
+  "upgrade": 9,
+  "upgraded": 2,
+  "upgrades": 3,
+  "ups": 2,
+  "use": 4,
+  "used": 2,
+  "using": 2,
+  "variability": 3,
+  "vault": 2,
+  "vehicles": 2,
+  "versions": 3,
+  "very": 6,
+  "vey": 3,
+  "visual": 2,
+  "vulnerable": 2,
+  "wait": 3,
+  "wall": 3,
+  "want": 2,
+  "wants": 2,
+  "war": 3,
+  "warhead": 3,
+  "warn": 3,
+  "warp": 3,
+  "warthog": 3,
+  "was": 37,
+  "water": 4,
+  "waters": 3,
+  "wave": 9,
+  "waves": 8,
+  "way": 13,
+  "we": 35,
+  "we'll": 2,
+  "weapon": 16,
+  "weapons": 11,
+  "weave": 3,
+  "weight": 3,
+  "weights": 3,
+  "weird": 5,
+  "well": 8,
+  "were": 7,
+  "what": 18,
+  "whatever": 2,
+  "when": 33,
+  "whenever": 2,
+  "where": 3,
+  "which": 8,
+  "while": 5,
+  "whole": 3,
+  "why": 3,
+  "wide": 3,
+  "wider": 3,
+  "width": 3,
+  "wield": 3,
+  "wild": 3,
+  "will": 18,
+  "window": 3,
+  "wing": 3,
+  "with": 36,
+  "wobble": 3,
+  "wolf": 3,
+  "work": 11,
+  "worked": 2,
+  "works": 16,
+  "would": 11,
+  "wrecking": 3,
+  "yard": 3,
+  "yeah": 8,
+  "you": 55,
+  "you're": 3,
+  "your": 7
+ },
+ "starters": [
+  "I",
+  "The",
+  "Also",
+  "It",
+  "This",
+  "Good",
+  "Make",
+  "You"
+ ],
+ "bigrams": {
+  "a": {
+   "little": 24,
+   "lot": 14,
+   "good": 5,
+   "different": 4,
+   "row": 3,
+   "missile": 3,
+   "ship": 3,
+   "random": 3
+  },
+  "able": {
+   "to": 4
+  },
+  "about": {
+   "the": 2,
+   "to": 2
+  },
+  "across": {
+   "the": 2
+  },
+  "actually": {
+   "after": 2
+  },
+  "add": {
+   "in": 4
+  },
+  "after": {
+   "it": 2
+  },
+  "again": {
+   "or": 2
+  },
+  "all": {
+   "the": 11,
+   "right": 2,
+   "your": 2,
+   "that": 2,
+   "of": 2
+  },
+  "allowed": {
+   "to": 3
+  },
+  "alright": {
+   "this": 2
+  },
+  "also": {
+   "the": 8,
+   "i": 4,
+   "have": 2,
+   "it": 2,
+   "make": 2,
+   "reload": 2
+  },
+  "always": {
+   "have": 4
+  },
+  "ammo": {
+   "to": 2
+  },
+  "amount": {
+   "of": 5
+  },
+  "an": {
+   "audit": 3,
+   "animation": 2
+  },
+  "and": {
+   "then": 32,
+   "it": 7,
+   "the": 5,
+   "they": 4,
+   "also": 3,
+   "just": 2,
+   "aircraft": 2,
+   "direct": 2
+  },
+  "animation": {
+   "that": 2
+  },
+  "appear": {
+   "in": 2
+  },
+  "are": {
+   "still": 2,
+   "in": 2,
+   "close": 2
+  },
+  "around": {
+   "the": 2
+  },
+  "as": {
+   "it": 7,
+   "well": 4,
+   "the": 2,
+   "expected": 2,
+   "needed": 2,
+   "i": 2
+  },
+  "at": {
+   "the": 11,
+   "least": 5,
+   "all": 3,
+   "once": 3,
+   "a": 2
+  },
+  "attack": {
+   "sub": 2
+  },
+  "audit": {
+   "on": 2
+  },
+  "back": {
+   "to": 3,
+   "but": 2,
+   "and": 2
+  },
+  "bad": {
+   "maybe": 2
+  },
+  "be": {
+   "a": 12,
+   "like": 5,
+   "more": 4,
+   "able": 4,
+   "fixed": 3,
+   "just": 3,
+   "on": 3,
+   "tuned": 3
+  },
+  "because": {
+   "the": 2
+  },
+  "before": {
+   "the": 5,
+   "it": 4
+  },
+  "begins": {
+   "and": 2
+  },
+  "better": {
+   "now": 2,
+   "way": 2
+  },
+  "bit": {
+   "more": 3
+  },
+  "blow": {
+   "up": 3
+  },
+  "boosted": {
+   "up": 2
+  },
+  "boss": {
+   "wave": 3
+  },
+  "bottom": {
+   "left": 2
+  },
+  "break": {
+   "up": 2
+  },
+  "but": {
+   "i": 9,
+   "it": 8,
+   "the": 7,
+   "we": 3,
+   "just": 3,
+   "doable": 3,
+   "you": 2,
+   "make": 2
+  },
+  "buttons": {
+   "on": 2
+  },
+  "can": {
+   "be": 3,
+   "remove": 3,
+   "mention": 2,
+   "we": 2,
+   "have": 2,
+   "see": 2
+  },
+  "can't": {
+   "see": 2
+  },
+  "cannot": {
+   "intercept": 2
+  },
+  "cargo": {
+   "plane": 2
+  },
+  "cause": {
+   "i": 2,
+   "it": 2
+  },
+  "chance": {
+   "to": 2
+  },
+  "change": {
+   "the": 2
+  },
+  "come": {
+   "back": 4,
+   "from": 4,
+   "in": 3
+  },
+  "coming": {
+   "in": 3,
+   "top": 2
+  },
+  "could": {
+   "come": 2,
+   "just": 2,
+   "be": 2
+  },
+  "cut": {
+   "off": 2
+  },
+  "damage": {
+   "but": 2,
+   "or": 2
+  },
+  "dark": {
+   "waters": 2
+  },
+  "decoy": {
+   "drones": 2
+  },
+  "did": {
+   "not": 2
+  },
+  "didn't": {
+   "seem": 2
+  },
+  "different": {
+   "way": 2
+  },
+  "do": {
+   "that": 5,
+   "the": 3,
+   "a": 3,
+   "an": 3,
+   "need": 2
+  },
+  "does": {
+   "not": 4
+  },
+  "doesn't": {
+   "need": 4,
+   "really": 2
+  },
+  "don't": {
+   "have": 3,
+   "know": 2
+  },
+  "doubt": {
+   "once": 2
+  },
+  "down": {
+   "in": 2,
+   "like": 2,
+   "you": 2
+  },
+  "draft": {
+   "page": 2
+  },
+  "drop": {
+   "the": 2,
+   "this": 2
+  },
+  "drops": {
+   "in": 2
+  },
+  "dual": {
+   "wield": 3
+  },
+  "during": {
+   "the": 2
+  },
+  "each": {
+   "other": 3
+  },
+  "easier": {
+   "to": 2
+  },
+  "else": {
+   "that": 2
+  },
+  "enemy": {
+   "attack": 4,
+   "helicopter": 2
+  },
+  "everything": {
+   "on": 2
+  },
+  "existing": {
+   "ones": 2
+  },
+  "fast": {
+   "one": 2
+  },
+  "feel": {
+   "like": 3,
+   "more": 2
+  },
+  "first": {
+   "map": 2
+  },
+  "follow": {
+   "the": 2
+  },
+  "for": {
+   "the": 22,
+   "this": 3,
+   "these": 3,
+   "enemy": 3,
+   "it": 2,
+   "maps": 2,
+   "all": 2,
+   "both": 2
+  },
+  "from": {
+   "the": 14
+  },
+  "fun": {
+   "idea": 2
+  },
+  "game": {
+   "is": 3
+  },
+  "good": {
+   "overall": 13,
+   "but": 12,
+   "and": 4
+  },
+  "great": {
+   "first": 2
+  },
+  "ground": {
+   "and": 2
+  },
+  "had": {
+   "a": 2
+  },
+  "hard": {
+   "but": 6,
+   "to": 4
+  },
+  "has": {
+   "a": 3
+  },
+  "have": {
+   "the": 10,
+   "to": 7,
+   "a": 5,
+   "it": 5,
+   "more": 5,
+   "an": 3,
+   "them": 2
+  },
+  "hellfire": {
+   "missiles": 2
+  },
+  "here": {
+   "and": 3
+  },
+  "hit": {
+   "a": 3
+  },
+  "how": {
+   "the": 4,
+   "it": 4
+  },
+  "i": {
+   "think": 39,
+   "was": 7,
+   "don't": 5,
+   "like": 5,
+   "just": 4,
+   "would": 4,
+   "have": 4,
+   "guess": 4
+  },
+  "i'm": {
+   "not": 4
+  },
+  "idea": {
+   "might": 2
+  },
+  "if": {
+   "it": 5,
+   "you": 4,
+   "say": 2
+  },
+  "improve": {
+   "that": 3
+  },
+  "in": {
+   "the": 11,
+   "a": 6,
+   "and": 3,
+   "this": 3,
+   "it": 2,
+   "that": 2,
+   "general": 2,
+   "an": 2
+  },
+  "instead": {
+   "of": 8,
+   "that": 2
+  },
+  "into": {
+   "it": 2
+  },
+  "is": {
+   "good": 8,
+   "a": 4,
+   "just": 3,
+   "right": 2,
+   "so": 2,
+   "to": 2,
+   "which": 2,
+   "but": 2
+  },
+  "it": {
+   "should": 24,
+   "is": 17,
+   "just": 8,
+   "does": 7,
+   "would": 6,
+   "to": 5,
+   "more": 4,
+   "like": 4
+  },
+  "it's": {
+   "just": 4,
+   "like": 3,
+   "kind": 2,
+   "not": 2
+  },
+  "its": {
+   "own": 2
+  },
+  "just": {
+   "make": 8,
+   "kind": 5,
+   "a": 4,
+   "be": 3,
+   "this": 3,
+   "to": 2,
+   "has": 2,
+   "do": 2
+  },
+  "keep": {
+   "it": 3
+  },
+  "kill": {
+   "it": 2
+  },
+  "kind": {
+   "of": 20
+  },
+  "know": {
+   "the": 2
+  },
+  "lab": {
+   "and": 2
+  },
+  "land": {
+   "and": 2
+  },
+  "last": {
+   "round": 2,
+   "wave": 2
+  },
+  "levels": {
+   "as": 2
+  },
+  "like": {
+   "a": 17,
+   "the": 9,
+   "that": 8,
+   "it": 3,
+   "this": 3,
+   "survive": 3,
+   "from": 2,
+   "raised": 2
+  },
+  "little": {
+   "bit": 8,
+   "too": 2,
+   "quicker": 2,
+   "jittery": 2
+  },
+  "live": {
+   "or": 2
+  },
+  "long": {
+   "as": 2
+  },
+  "look": {
+   "like": 5
+  },
+  "looking": {
+   "for": 2
+  },
+  "looks": {
+   "pretty": 2
+  },
+  "lot": {
+   "of": 3,
+   "better": 2,
+   "more": 2,
+   "quicker": 2
+  },
+  "low": {
+   "ground": 2
+  },
+  "made": {
+   "a": 2
+  },
+  "main": {
+   "thing": 2
+  },
+  "make": {
+   "it": 18,
+   "sure": 14,
+   "the": 12,
+   "a": 2,
+   "sense": 2
+  },
+  "maps": {
+   "or": 2,
+   "that": 2
+  },
+  "match": {
+   "how": 2
+  },
+  "maybe": {
+   "we": 2,
+   "instead": 2,
+   "it's": 2,
+   "you": 2
+  },
+  "might": {
+   "be": 4
+  },
+  "more": {
+   "of": 7,
+   "natural": 2,
+   "sense": 2,
+   "fun": 2,
+   "dramatic": 2
+  },
+  "much": {
+   "better": 3
+  },
+  "munitions": {
+   "from": 2
+  },
+  "need": {
+   "to": 24,
+   "a": 3
+  },
+  "needed": {
+   "there": 2
+  },
+  "needs": {
+   "to": 13
+  },
+  "new": {
+   "on": 3,
+   "ideas": 2,
+   "weapon": 2,
+   "weapons": 2
+  },
+  "next": {
+   "three": 2
+  },
+  "no": {
+   "nukes": 2
+  },
+  "not": {
+   "do": 5,
+   "a": 4,
+   "sure": 3,
+   "really": 2,
+   "even": 2,
+   "work": 2,
+   "all": 2,
+   "just": 2
+  },
+  "note": {
+   "on": 4,
+   "for": 3
+  },
+  "nuke": {
+   "should": 2
+  },
+  "of": {
+   "the": 23,
+   "a": 7,
+   "like": 3,
+   "be": 2,
+   "match": 2,
+   "it": 2,
+   "all": 2,
+   "just": 2
+  },
+  "off": {
+   "the": 4,
+   "screen": 2
+  },
+  "oil": {
+   "rigs": 2
+  },
+  "on": {
+   "the": 43,
+   "this": 5,
+   "all": 2,
+   "top": 2
+  },
+  "once": {
+   "you": 4,
+   "they": 2,
+   "it": 2,
+   "the": 2
+  },
+  "one": {
+   "is": 5,
+   "so": 3,
+   "was": 3,
+   "note": 3,
+   "should": 3,
+   "thing": 3,
+   "a": 2,
+   "that": 2
+  },
+  "option": {
+   "to": 3
+  },
+  "or": {
+   "something": 4,
+   "the": 4,
+   "else": 2,
+   "boost": 2,
+   "not": 2,
+   "ships": 2
+  },
+  "other": {
+   "one": 5
+  },
+  "out": {
+   "more": 3,
+   "of": 2,
+   "a": 2,
+   "i": 2
+  },
+  "outside": {
+   "of": 2
+  },
+  "overall": {
+   "but": 6,
+   "this": 2,
+   "i": 2,
+   "just": 2,
+   "good": 2
+  },
+  "pause": {
+   "before": 2
+  },
+  "perspective": {
+   "should": 2
+  },
+  "pick": {
+   "up": 4
+  },
+  "picked": {
+   "up": 2
+  },
+  "play": {
+   "testing": 2
+  },
+  "players": {
+   "to": 2
+  },
+  "power": {
+   "up": 4
+  },
+  "pretty": {
+   "bad": 2
+  },
+  "probably": {
+   "the": 2,
+   "need": 2
+  },
+  "purpose": {
+   "perspective": 2
+  },
+  "raised": {
+   "up": 2
+  },
+  "ranking": {
+   "is": 2
+  },
+  "really": {
+   "fun": 3,
+   "sure": 2,
+   "need": 2,
+   "make": 2,
+   "bad": 2
+  },
+  "reload": {
+   "a": 2
+  },
+  "remove": {
+   "the": 3,
+   "that": 2
+  },
+  "reset": {
+   "and": 2
+  },
+  "rest": {
+   "of": 2
+  },
+  "rework": {
+   "that": 2,
+   "the": 2
+  },
+  "right": {
+   "now": 5,
+   "before": 2
+  },
+  "rocket": {
+   "truck": 2
+  },
+  "rotate": {
+   "it": 2
+  },
+  "same": {
+   "with": 3
+  },
+  "save": {
+   "it": 2
+  },
+  "say": {
+   "new": 3,
+   "make": 2,
+   "live": 2
+  },
+  "screen": {
+   "and": 4,
+   "that": 2,
+   "so": 2
+  },
+  "see": {
+   "the": 4,
+   "what": 2
+  },
+  "seem": {
+   "to": 3
+  },
+  "select": {
+   "another": 2
+  },
+  "set": {
+   "this": 2
+  },
+  "ship": {
+   "should": 2,
+   "is": 2
+  },
+  "ships": {
+   "come": 2,
+   "are": 2,
+   "reset": 2
+  },
+  "shoot": {
+   "a": 2
+  },
+  "shot": {
+   "down": 3
+  },
+  "should": {
+   "be": 19,
+   "not": 10,
+   "just": 9,
+   "have": 7,
+   "come": 3,
+   "say": 3,
+   "add": 2,
+   "also": 2
+  },
+  "side": {
+   "and": 2
+  },
+  "slow": {
+   "it": 2,
+   "down": 2,
+   "needs": 2,
+   "motion": 2
+  },
+  "so": {
+   "i": 11,
+   "that": 5,
+   "it": 4,
+   "you": 4,
+   "just": 3,
+   "make": 3,
+   "basically": 2,
+   "there's": 2
+  },
+  "something": {
+   "like": 2,
+   "that": 2
+  },
+  "sonic": {
+   "missile": 2
+  },
+  "special": {
+   "event": 3,
+   "events": 3
+  },
+  "still": {
+   "too": 3,
+   "can't": 2,
+   "kinda": 2
+  },
+  "stuff": {
+   "it": 2
+  },
+  "sub": {
+   "should": 2
+  },
+  "sure": {
+   "what": 3,
+   "that's": 3,
+   "it": 2,
+   "if": 2
+  },
+  "survive": {
+   "for": 2
+  },
+  "take": {
+   "a": 3
+  },
+  "tap": {
+   "tap": 2
+  },
+  "test": {
+   "lab": 5,
+   "it": 2
+  },
+  "than": {
+   "the": 3
+  },
+  "that": {
+   "was": 7,
+   "should": 6,
+   "i": 6,
+   "it": 5,
+   "and": 5,
+   "is": 4,
+   "so": 3,
+   "but": 2
+  },
+  "that's": {
+   "kind": 3
+  },
+  "the": {
+   "screen": 15,
+   "other": 10,
+   "player": 8,
+   "same": 7,
+   "ship": 7,
+   "boss": 7,
+   "bottom": 7,
+   "game": 5
+  },
+  "them": {
+   "so": 2,
+   "and": 2
+  },
+  "then": {
+   "also": 5,
+   "it": 4,
+   "the": 4,
+   "drops": 2,
+   "we": 2
+  },
+  "there": {
+   "should": 4,
+   "too": 2,
+   "is": 2
+  },
+  "these": {
+   "special": 2,
+   "next": 2
+  },
+  "they": {
+   "are": 6,
+   "should": 3,
+   "all": 2
+  },
+  "thing": {
+   "with": 2
+  },
+  "things": {
+   "like": 2
+  },
+  "think": {
+   "we": 5,
+   "that": 4,
+   "the": 4,
+   "you": 4,
+   "it": 3,
+   "that's": 3,
+   "this": 3,
+   "it's": 2
+  },
+  "this": {
+   "one": 21,
+   "is": 8,
+   "was": 5,
+   "drone": 3,
+   "works": 2,
+   "up": 2,
+   "one's": 2,
+   "map": 2
+  },
+  "three": {
+   "waves": 3,
+   "rounds": 2
+  },
+  "throw": {
+   "it": 2
+  },
+  "time": {
+   "so": 2
+  },
+  "to": {
+   "be": 24,
+   "the": 10,
+   "make": 9,
+   "work": 6,
+   "have": 5,
+   "do": 4,
+   "master": 3,
+   "reset": 3
+  },
+  "too": {
+   "much": 4,
+   "just": 2,
+   "slow": 2,
+   "easy": 2,
+   "difficult": 2,
+   "hard": 2
+  },
+  "top": {
+   "down": 2,
+   "screen": 2,
+   "of": 2
+  },
+  "trucks": {
+   "going": 2
+  },
+  "try": {
+   "again": 4,
+   "to": 2
+  },
+  "tuned": {
+   "down": 2
+  },
+  "turn": {
+   "around": 2
+  },
+  "two": {
+   "waves": 2
+  },
+  "up": {
+   "a": 6,
+   "and": 3,
+   "the": 3,
+   "so": 3,
+   "everything": 2
+  },
+  "upgrade": {
+   "should": 2
+  },
+  "vulnerable": {
+   "doubt": 2
+  },
+  "was": {
+   "a": 6,
+   "good": 4,
+   "hard": 4,
+   "not": 2,
+   "thinking": 2
+  },
+  "wave": {
+   "in": 2,
+   "have": 2,
+   "so": 2
+  },
+  "waves": {
+   "make": 2
+  },
+  "way": {
+   "too": 5,
+   "for": 3
+  },
+  "we": {
+   "should": 9,
+   "can": 3,
+   "need": 3,
+   "could": 2,
+   "just": 2,
+   "have": 2,
+   "don't": 2
+  },
+  "we'll": {
+   "test": 2
+  },
+  "weapon": {
+   "drop": 4
+  },
+  "weapons": {
+   "on": 2,
+   "that": 2,
+   "or": 2
+  },
+  "what": {
+   "the": 4,
+   "it": 3,
+   "we": 2,
+   "happened": 2
+  },
+  "when": {
+   "you": 5,
+   "it": 4,
+   "they": 3,
+   "i": 3,
+   "tap": 2,
+   "the": 2
+  },
+  "which": {
+   "it": 2,
+   "is": 2
+  },
+  "will": {
+   "try": 2,
+   "need": 2
+  },
+  "with": {
+   "the": 22,
+   "it": 3,
+   "one": 2
+  },
+  "work": {
+   "on": 5
+  },
+  "works": {
+   "good": 7,
+   "but": 2,
+   "as": 2,
+   "well": 2
+  },
+  "would": {
+   "say": 2,
+   "be": 2,
+   "just": 2
+  },
+  "yeah": {
+   "still": 2
+  },
+  "you": {
+   "can": 13,
+   "know": 6,
+   "have": 4,
+   "should": 4,
+   "could": 3,
+   "break": 2,
+   "select": 2,
+   "hold": 2
+  },
+  "your": {
+   "ammo": 2
+  }
+ },
+ "trigrams": {
+  "a different": {
+   "way": 2
+  },
+  "a fast": {
+   "one": 2
+  },
+  "a little": {
+   "bit": 7,
+   "too": 2,
+   "quicker": 2,
+   "jittery": 2
+  },
+  "a lot": {
+   "of": 3,
+   "better": 2,
+   "more": 2,
+   "quicker": 2
+  },
+  "a low": {
+   "ground": 2
+  },
+  "a pause": {
+   "before": 2
+  },
+  "a ship": {
+   "is": 2
+  },
+  "a vulnerable": {
+   "doubt": 2
+  },
+  "about to": {
+   "hit": 2
+  },
+  "also reload": {
+   "a": 2
+  },
+  "always have": {
+   "an": 2,
+   "to": 2
+  },
+  "an animation": {
+   "that": 2
+  },
+  "an audit": {
+   "on": 2
+  },
+  "and it": {
+   "doesn't": 2
+  },
+  "and say": {
+   "live": 2
+  },
+  "and that": {
+   "should": 2
+  },
+  "and then": {
+   "it": 4,
+   "the": 4,
+   "also": 3,
+   "drops": 2
+  },
+  "and we": {
+   "should": 2
+  },
+  "as it": {
+   "is": 7
+  },
+  "as needed": {
+   "there": 2
+  },
+  "at the": {
+   "end": 3,
+   "bottom": 3,
+   "same": 2,
+   "start": 2
+  },
+  "attack sub": {
+   "should": 2
+  },
+  "back and": {
+   "forth": 2
+  },
+  "back but": {
+   "it": 2
+  },
+  "back to": {
+   "the": 3
+  },
+  "bad maybe": {
+   "instead": 2
+  },
+  "be a": {
+   "little": 5,
+   "different": 2
+  },
+  "be able": {
+   "to": 4
+  },
+  "be allowed": {
+   "to": 2
+  },
+  "be boosted": {
+   "up": 2
+  },
+  "be down": {
+   "like": 2
+  },
+  "be hard": {
+   "to": 2
+  },
+  "be like": {
+   "a": 2
+  },
+  "be on": {
+   "the": 2
+  },
+  "be tuned": {
+   "down": 2
+  },
+  "before it": {
+   "begins": 2
+  },
+  "before the": {
+   "bomber": 2
+  },
+  "begins and": {
+   "say": 2
+  },
+  "blow up": {
+   "everything": 2
+  },
+  "boosted up": {
+   "a": 2
+  },
+  "boss wave": {
+   "have": 2
+  },
+  "but i": {
+   "think": 3,
+   "really": 2
+  },
+  "but it": {
+   "just": 2
+  },
+  "but need": {
+   "to": 2
+  },
+  "but we'll": {
+   "test": 2
+  },
+  "buttons on": {
+   "the": 2
+  },
+  "can remove": {
+   "that": 2
+  },
+  "can't see": {
+   "the": 2
+  },
+  "come back": {
+   "but": 2
+  },
+  "come from": {
+   "the": 2
+  },
+  "coming top": {
+   "down": 2
+  },
+  "could come": {
+   "back": 2
+  },
+  "didn't seem": {
+   "to": 2
+  },
+  "different way": {
+   "for": 2
+  },
+  "do an": {
+   "audit": 3
+  },
+  "doesn't need": {
+   "to": 3
+  },
+  "doesn't really": {
+   "make": 2
+  },
+  "don't have": {
+   "to": 2
+  },
+  "don't know": {
+   "the": 2
+  },
+  "doubt once": {
+   "you": 2
+  },
+  "down in": {
+   "it": 2
+  },
+  "down like": {
+   "from": 2
+  },
+  "drop this": {
+   "one": 2
+  },
+  "everything on": {
+   "the": 2
+  },
+  "feel like": {
+   "the": 2
+  },
+  "feel more": {
+   "dramatic": 2
+  },
+  "for it": {
+   "to": 2
+  },
+  "for these": {
+   "next": 2
+  },
+  "from the": {
+   "ship": 2,
+   "top": 2
+  },
+  "fun idea": {
+   "might": 2
+  },
+  "game is": {
+   "so": 2
+  },
+  "good but": {
+   "the": 3,
+   "i": 2,
+   "need": 2,
+   "it": 2
+  },
+  "good overall": {
+   "but": 5,
+   "i": 2,
+   "just": 2
+  },
+  "great first": {
+   "map": 2
+  },
+  "ground and": {
+   "then": 2
+  },
+  "hard but": {
+   "doable": 3
+  },
+  "hard to": {
+   "master": 3
+  },
+  "has a": {
+   "vulnerable": 2
+  },
+  "have more": {
+   "of": 3
+  },
+  "have the": {
+   "option": 2
+  },
+  "have to": {
+   "be": 2
+  },
+  "hit a": {
+   "mine": 2
+  },
+  "how the": {
+   "rest": 2
+  },
+  "i don't": {
+   "know": 2
+  },
+  "i feel": {
+   "like": 3
+  },
+  "i like": {
+   "the": 2
+  },
+  "i made": {
+   "a": 2
+  },
+  "i really": {
+   "need": 2
+  },
+  "i think": {
+   "we": 5,
+   "the": 4,
+   "you": 4,
+   "it": 3,
+   "that's": 3,
+   "that": 3,
+   "it's": 2,
+   "there": 2
+  },
+  "i throw": {
+   "it": 2
+  },
+  "i was": {
+   "thinking": 2
+  },
+  "i will": {
+   "try": 2
+  },
+  "i would": {
+   "say": 2
+  },
+  "idea might": {
+   "be": 2
+  },
+  "in a": {
+   "row": 2
+  },
+  "in it": {
+   "kind": 2
+  },
+  "instead of": {
+   "just": 2
+  },
+  "instead that": {
+   "coming": 2
+  },
+  "is a": {
+   "good": 2
+  },
+  "is but": {
+   "we'll": 2
+  },
+  "is good": {
+   "but": 3,
+   "overall": 2
+  },
+  "is so": {
+   "i": 2
+  },
+  "it also": {
+   "reload": 2
+  },
+  "it as": {
+   "it": 4
+  },
+  "it begins": {
+   "and": 2
+  },
+  "it can": {
+   "be": 2
+  },
+  "it could": {
+   "come": 2
+  },
+  "it feel": {
+   "more": 2
+  },
+  "it is": {
+   "but": 2,
+   "still": 2
+  },
+  "it just": {
+   "has": 2
+  },
+  "it kind": {
+   "of": 2
+  },
+  "it like": {
+   "a": 2
+  },
+  "it look": {
+   "like": 3
+  },
+  "it looks": {
+   "pretty": 2
+  },
+  "it needs": {
+   "to": 4
+  },
+  "it out": {
+   "more": 2
+  },
+  "it should": {
+   "be": 3,
+   "not": 3,
+   "just": 3,
+   "come": 2,
+   "say": 2
+  },
+  "it so": {
+   "i": 2
+  },
+  "it still": {
+   "too": 2
+  },
+  "it to": {
+   "appear": 2
+  },
+  "it works": {
+   "well": 2
+  },
+  "it would": {
+   "be": 2,
+   "just": 2
+  },
+  "it's kind": {
+   "of": 2
+  },
+  "it's like": {
+   "raised": 2
+  },
+  "just a": {
+   "little": 3
+  },
+  "just has": {
+   "a": 2
+  },
+  "just kind": {
+   "of": 5
+  },
+  "just make": {
+   "sure": 4,
+   "it": 3
+  },
+  "just needs": {
+   "to": 2
+  },
+  "keep it": {
+   "as": 3
+  },
+  "kind of": {
+   "like": 3,
+   "be": 2,
+   "match": 2,
+   "the": 2,
+   "keep": 2
+  },
+  "know the": {
+   "purpose": 2
+  },
+  "levels as": {
+   "needed": 2
+  },
+  "like from": {
+   "the": 2
+  },
+  "like raised": {
+   "up": 2
+  },
+  "like survive": {
+   "for": 2
+  },
+  "like that": {
+   "so": 3,
+   "and": 2
+  },
+  "little bit": {
+   "more": 3
+  },
+  "live or": {
+   "ships": 2
+  },
+  "look like": {
+   "a": 3
+  },
+  "looking for": {
+   "enemy": 2
+  },
+  "looks pretty": {
+   "bad": 2
+  },
+  "low ground": {
+   "and": 2
+  },
+  "made a": {
+   "note": 2
+  },
+  "make it": {
+   "look": 3,
+   "more": 2,
+   "like": 2,
+   "feel": 2
+  },
+  "make sure": {
+   "that's": 3,
+   "it": 2
+  },
+  "match how": {
+   "the": 2
+  },
+  "maybe instead": {
+   "that": 2
+  },
+  "maybe it's": {
+   "like": 2
+  },
+  "maybe we": {
+   "could": 2
+  },
+  "maybe you": {
+   "can": 2
+  },
+  "might be": {
+   "hard": 2
+  },
+  "more of": {
+   "a": 6
+  },
+  "munitions from": {
+   "the": 2
+  },
+  "need to": {
+   "be": 6,
+   "work": 4,
+   "make": 2
+  },
+  "needs to": {
+   "be": 9
+  },
+  "new on": {
+   "the": 2
+  },
+  "next three": {
+   "waves": 2
+  },
+  "not a": {
+   "great": 2
+  },
+  "not just": {
+   "this": 2
+  },
+  "not really": {
+   "sure": 2
+  },
+  "note on": {
+   "the": 3
+  },
+  "of a": {
+   "pause": 2
+  },
+  "of be": {
+   "down": 2
+  },
+  "of keep": {
+   "it": 2
+  },
+  "of match": {
+   "how": 2
+  },
+  "of the": {
+   "game": 2,
+   "problem": 2,
+   "existing": 2,
+   "screen": 2
+  },
+  "on the": {
+   "screen": 7,
+   "new": 3,
+   "other": 3,
+   "left": 3,
+   "map": 3,
+   "bottom": 3,
+   "land": 2,
+   "animation": 2
+  },
+  "on this": {
+   "one": 2
+  },
+  "on top": {
+   "of": 2
+  },
+  "once you": {
+   "break": 2
+  },
+  "one is": {
+   "good": 4
+  },
+  "one note": {
+   "on": 2
+  },
+  "one thing": {
+   "with": 2
+  },
+  "or ships": {
+   "reset": 2
+  },
+  "or something": {
+   "like": 2
+  },
+  "other one": {
+   "so": 2
+  },
+  "out i": {
+   "think": 2
+  },
+  "outside of": {
+   "the": 2
+  },
+  "overall but": {
+   "i": 2
+  },
+  "overall i": {
+   "think": 2
+  },
+  "overall this": {
+   "was": 2
+  },
+  "pause before": {
+   "it": 2
+  },
+  "perspective should": {
+   "kind": 2
+  },
+  "pretty bad": {
+   "maybe": 2
+  },
+  "probably need": {
+   "to": 2
+  },
+  "purpose perspective": {
+   "should": 2
+  },
+  "raised up": {
+   "a": 2
+  },
+  "really fun": {
+   "idea": 2
+  },
+  "really need": {
+   "to": 2
+  },
+  "really sure": {
+   "what": 2
+  },
+  "reload a": {
+   "lot": 2
+  },
+  "reset and": {
+   "the": 2
+  },
+  "rest of": {
+   "the": 2
+  },
+  "rework the": {
+   "levels": 2
+  },
+  "same with": {
+   "the": 2
+  },
+  "say live": {
+   "or": 2
+  },
+  "say new": {
+   "on": 2
+  },
+  "screen and": {
+   "then": 3
+  },
+  "see the": {
+   "text": 2
+  },
+  "set this": {
+   "up": 2
+  },
+  "ships reset": {
+   "and": 2
+  },
+  "should always": {
+   "have": 2
+  },
+  "should be": {
+   "a": 3,
+   "on": 2,
+   "good": 2,
+   "just": 2
+  },
+  "should blow": {
+   "up": 2
+  },
+  "should have": {
+   "the": 3,
+   "to": 2
+  },
+  "should just": {
+   "be": 2
+  },
+  "should kind": {
+   "of": 2
+  },
+  "should not": {
+   "do": 4,
+   "be": 2
+  },
+  "should say": {
+   "new": 2
+  },
+  "should set": {
+   "this": 2
+  },
+  "slow it": {
+   "down": 2
+  },
+  "slow needs": {
+   "to": 2
+  },
+  "so do": {
+   "an": 2
+  },
+  "so i": {
+   "think": 7,
+   "can": 2
+  },
+  "so i'm": {
+   "not": 2
+  },
+  "so it": {
+   "can": 2
+  },
+  "so just": {
+   "make": 2
+  },
+  "so make": {
+   "sure": 2
+  },
+  "so that": {
+   "it": 2
+  },
+  "so you": {
+   "can": 2
+  },
+  "something like": {
+   "that": 2
+  },
+  "still too": {
+   "slow": 2
+  },
+  "survive for": {
+   "these": 2
+  },
+  "take a": {
+   "look": 2
+  },
+  "test it": {
+   "out": 2
+  },
+  "test lab": {
+   "and": 2
+  },
+  "than the": {
+   "other": 2
+  },
+  "that and": {
+   "it": 2,
+   "then": 2
+  },
+  "that are": {
+   "in": 2
+  },
+  "that coming": {
+   "top": 2
+  },
+  "that have": {
+   "it": 2
+  },
+  "that i": {
+   "had": 2
+  },
+  "that it": {
+   "should": 2,
+   "also": 2
+  },
+  "that need": {
+   "to": 2
+  },
+  "that should": {
+   "be": 4
+  },
+  "that was": {
+   "hard": 3,
+   "a": 2
+  },
+  "that we": {
+   "should": 2
+  },
+  "that's kind": {
+   "of": 3
+  },
+  "the boss": {
+   "wave": 3
+  },
+  "the bottom": {
+   "left": 2
+  },
+  "the decoy": {
+   "drones": 2
+  },
+  "the draft": {
+   "page": 2
+  },
+  "the enemy": {
+   "helicopter": 2
+  },
+  "the existing": {
+   "ones": 2
+  },
+  "the game": {
+   "is": 2
+  },
+  "the land": {
+   "and": 2
+  },
+  "the levels": {
+   "as": 2
+  },
+  "the nuke": {
+   "should": 2
+  },
+  "the oil": {
+   "rigs": 2
+  },
+  "the option": {
+   "to": 2
+  },
+  "the other": {
+   "one": 5
+  },
+  "the players": {
+   "to": 2
+  },
+  "the power": {
+   "up": 2
+  },
+  "the purpose": {
+   "perspective": 2
+  },
+  "the rest": {
+   "of": 2
+  },
+  "the rocket": {
+   "truck": 2
+  },
+  "the screen": {
+   "that": 2,
+   "so": 2
+  },
+  "the ship": {
+   "should": 2
+  },
+  "the slow": {
+   "motion": 2
+  },
+  "the special": {
+   "event": 2
+  },
+  "the test": {
+   "lab": 3
+  },
+  "the top": {
+   "screen": 2
+  },
+  "then drops": {
+   "in": 2
+  },
+  "then it": {
+   "could": 2
+  },
+  "there should": {
+   "be": 3
+  },
+  "these next": {
+   "three": 2
+  },
+  "these special": {
+   "events": 2
+  },
+  "they should": {
+   "just": 2
+  },
+  "thing with": {
+   "the": 2
+  },
+  "think kind": {
+   "of": 2
+  },
+  "think that's": {
+   "kind": 2
+  },
+  "think there": {
+   "should": 2
+  },
+  "think this": {
+   "is": 2
+  },
+  "think we": {
+   "need": 2
+  },
+  "think you": {
+   "can": 2
+  },
+  "this is": {
+   "good": 3
+  },
+  "this one": {
+   "is": 5,
+   "a": 2,
+   "was": 2
+  },
+  "this up": {
+   "so": 2
+  },
+  "this was": {
+   "good": 2,
+   "a": 2
+  },
+  "three waves": {
+   "make": 2
+  },
+  "to be": {
+   "a": 3,
+   "fixed": 3,
+   "tuned": 3,
+   "boosted": 2,
+   "more": 2
+  },
+  "to change": {
+   "the": 2
+  },
+  "to hit": {
+   "a": 3
+  },
+  "to make": {
+   "sure": 3,
+   "it": 2,
+   "the": 2
+  },
+  "to the": {
+   "side": 2
+  },
+  "to work": {
+   "on": 5
+  },
+  "too slow": {
+   "needs": 2
+  },
+  "top down": {
+   "in": 2
+  },
+  "top screen": {
+   "and": 2
+  },
+  "up a": {
+   "low": 2,
+   "little": 2
+  },
+  "up everything": {
+   "on": 2
+  },
+  "up so": {
+   "that": 2
+  },
+  "vulnerable doubt": {
+   "once": 2
+  },
+  "was a": {
+   "clutch": 2
+  },
+  "was good": {
+   "but": 2
+  },
+  "wave have": {
+   "more": 2
+  },
+  "wave in": {
+   "the": 2
+  },
+  "waves make": {
+   "it": 2
+  },
+  "way for": {
+   "it": 2
+  },
+  "way too": {
+   "much": 2
+  },
+  "we need": {
+   "to": 3
+  },
+  "we should": {
+   "do": 2
+  },
+  "we'll test": {
+   "it": 2
+  },
+  "what it": {
+   "is": 2
+  },
+  "when they": {
+   "are": 2
+  },
+  "when you": {
+   "have": 2
+  },
+  "which it": {
+   "should": 2
+  },
+  "will need": {
+   "to": 2
+  },
+  "will try": {
+   "again": 2
+  },
+  "with the": {
+   "boss": 2
+  },
+  "work on": {
+   "the": 4
+  },
+  "works as": {
+   "expected": 2
+  },
+  "works but": {
+   "just": 2
+  },
+  "works good": {
+   "but": 4
+  },
+  "you break": {
+   "up": 2
+  },
+  "you can": {
+   "remove": 3
+  },
+  "you could": {
+   "just": 2
+  },
+  "you select": {
+   "another": 2
+  },
+  "you should": {
+   "set": 2
+  }
+ },
+ "typoFixes": {
+  "missle": "missile",
+  "missles": "missiles",
+  "damange": "damage",
+  "damnabe": "damage",
+  "cna": "can",
+  "cirle": "circle",
+  "radui": "radius",
+  "friget": "frigate",
+  "frigets": "frigates",
+  "iust": "just",
+  "radom": "random",
+  "gam": "game",
+  "appart": "apart",
+  "prbs": "probably",
+  "invinciblity": "invincibility",
+  "senarjos": "scenarios",
+  "toredaos": "torpedoes",
+  "advtentagus": "advantageous",
+  "brining": "bringing",
+  "pleasen": "please",
+  "ammon": "ammo",
+  "amoun": "amount",
+  "spotable": "spottable",
+  "projective": "projectile",
+  "aeigus": "aegis",
+  "worthhog": "warthog",
+  "hydro": "hydra",
+  "parascope": "periscope",
+  "wayyyyto": "way too",
+  "wayyyyyy": "way",
+  "itnshoudl": "it should",
+  "onenote": "one note",
+  "teh": "the",
+  "adn": "and",
+  "taht": "that",
+  "rees": "needs",
+  "drom": "drone",
+  "mutinous": "munitions",
+  "tithe": "to the",
+  "wiht": "with",
+  "thier": "their",
+  "recieve": "receive",
+  "definately": "definitely",
+  "seperate": "separate",
+  "alot": "a lot",
+  "wich": "which",
+  "becuase": "because",
+  "beleive": "believe",
+  "untill": "until"
+ },
+ "phraseFixes": [
+  {
+   "pattern": "\\bdual (?:weld|wheel|wheels|wield)\\b",
+   "replacement": "Dual Wield"
+  },
+  {
+   "pattern": "\\btesla lab\\b",
+   "replacement": "Test Lab"
+  },
+  {
+   "pattern": "\\bstargate (?:matt|map)\\b",
+   "replacement": "Saltgate map"
+  },
+  {
+   "pattern": "\\bstargate\\b",
+   "replacement": "Saltgate"
+  },
+  {
+   "pattern": "\\bcan all gates?\\b",
+   "replacement": "canal gate"
+  },
+  {
+   "pattern": "\\boral strike\\b",
+   "replacement": "Orbital Strike"
+  },
+  {
+   "pattern": "\\bplate testing\\b",
+   "replacement": "play testing"
+  },
+  {
+   "pattern": "\\bwire radius\\b",
+   "replacement": "wider radius"
+  },
+  {
+   "pattern": "\\bdrone s\\b",
+   "replacement": "drones"
+  },
+  {
+   "pattern": "\\bthe (?:a[ -]?ten|a-10|10|ten) warthog\\b",
+   "replacement": "the A-10 Warthog"
+  },
+  {
+   "pattern": "(?<!the )(?<![-A-Za-z0-9])(?:an? )?(?:a[ -]?ten|a-10|10|ten) warthog\\b",
+   "replacement": "an A-10 Warthog"
+  }
+ ],
+ "shortcuts": [
+  {
+   "trigger": ";gg",
+   "expansion": "good game"
+  },
+  {
+   "trigger": ";hs",
+   "expansion": "Hard but doable. "
+  },
+  {
+   "trigger": ";mk",
+   "expansion": "Make sure "
+  }
+ ],
+ "hotkeys": [
+  {
+   "label": "✓ Fix",
+   "title": "Fix spelling and dictation mistakes",
+   "action": "fix"
+  },
+  {
+   "label": "Good",
+   "insert": "Good overall. ",
+   "alt": {
+    "label": "works",
+    "insert": "Works as expected. "
+   },
+   "hold": {
+    "label": "better",
+    "insert": "Much better. "
+   }
+  },
+  {
+   "label": "Hard",
+   "insert": "Hard but doable. ",
+   "alt": {
+    "label": "too hard",
+    "insert": "Too hard. "
+   },
+   "hold": {
+    "label": "easy",
+    "insert": "Too easy. "
+   }
+  },
+  {
+   "label": "Faster",
+   "insert": "Make it a little faster. ",
+   "alt": {
+    "label": "slower",
+    "insert": "Make it a little slower. "
+   },
+   "hold": {
+    "label": "bigger",
+    "insert": "Make it a little bigger. "
+   }
+  },
+  {
+   "label": "Make",
+   "insert": "Make sure ",
+   "alt": {
+    "label": "a little",
+    "insert": "Make it a little "
+   },
+   "hold": {
+    "label": "obvious",
+    "insert": "Make it more obvious. "
+   }
+  },
+  {
+   "label": "Rework",
+   "insert": "Rework this one. ",
+   "alt": {
+    "label": "remove",
+    "insert": "Remove this one. "
+   },
+   "hold": {
+    "label": "keep",
+    "insert": "Keep as is. "
+   }
+  },
+  {
+   "label": "Fun",
+   "insert": "Very fun round. ",
+   "alt": {
+    "label": "clutch",
+    "insert": "That was a clutch moment. "
+   },
+   "hold": {
+    "label": "tough",
+    "insert": "That was hard. "
+   }
+  },
+  {
+   "label": "Audit",
+   "insert": "Do an audit to make sure ",
+   "alt": {
+    "label": "map",
+    "insert": "Run an audit on this map. "
+   },
+   "hold": {
+    "label": "all",
+    "insert": "Do an audit on all of these. "
+   }
+  }
+ ]
+}
